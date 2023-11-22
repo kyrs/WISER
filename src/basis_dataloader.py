@@ -120,7 +120,6 @@ def fetchCCLE_datafordrug(CCLE_Files, drug, diagnosis = False, threshold = None)
     return unlabelled_data, labeled_data
 
 def build_basis_CCLE(drug_list, CCLE_Files, seed):
-    # CCLE_Files = prepare_CCLE_files()
     
     extra_drugs = ['Bicalutamide', 'Cetuximab', 'Docetaxel', 'Erlotinib', 'Etoposide', 'Irinotecan', 'Methotrexate', 'Oxaliplatin', 'Temsirolimus', 'Topotecan']
     # MAPPING DRUGS FOR CCLE to GDSC Names: 
@@ -130,13 +129,11 @@ def build_basis_CCLE(drug_list, CCLE_Files, seed):
     for drug in drug_list:
         if drug in ['tgem', 'tfu']:
             gdsc_drug = drug_mapping_df.loc[drug[1:], 'gdsc_name']
-            # drug_name = drug_mapping_df.loc[drug[1:], 'drug_name']... NOT USING drug_name (only used in pdtc and tcga)
         elif drug in extra_drugs:
             gdsc_drug = drug
         else:
             gdsc_drug = drug_mapping_df.loc[drug, 'gdsc_name']
-            # drug_name = drug_mapping_df.loc[drug, 'drug_name']
-
+            
         
         if drug in ['tgem', 'tfu']: 
             unlabelled_data, labeled_data = fetchCCLE_datafordrug(CCLE_Files, gdsc_drug, True)
@@ -170,7 +167,6 @@ def build_basis_CCLE(drug_list, CCLE_Files, seed):
     for _, row in common_lbld_df.iterrows():
         basis = {}
         for col in common_lbld_df.columns:
-            # check this ************ not working for a single drug ****************
             category = col.split('_')[0]  # Extract the category name 
             if row[col] == 1:
                 basis[category] = 1
@@ -193,12 +189,10 @@ def build_basis_CCLE(drug_list, CCLE_Files, seed):
     for drug in drug_list:
         if drug in ['tgem', 'tfu']:
             gdsc_drug = drug_mapping_df.loc[drug[1:], 'gdsc_name']
-            # drug_name = drug_mapping_df.loc[drug[1:], 'drug_name']... NOT USING drug_name (only used in pdtc and tcga)
         elif drug in extra_drugs:
             gdsc_drug = drug
         else:
             gdsc_drug = drug_mapping_df.loc[drug, 'gdsc_name']
-            # drug_name = drug_mapping_df.loc[drug, 'drug_name']
 
         unlbld, lbld = fetchCCLE_datafordrug(CCLE_Files, gdsc_drug)
         indices = common_lbld_df.index.intersection(unlbld.index)
@@ -390,7 +384,6 @@ def get_dataloaders_for_alignment(drug_list, batch_size, ccle_only, seed):
     if ccle_only:
         return (train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader), (train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader) 
     else:
-        # assert(not torch.eq(labeled_CCLE_data[0], labeled_TCGA_data[0]))
         return (train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader), (train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader)
 
 
@@ -427,8 +420,6 @@ def CCLE_DataLoaders(drug_list, batch_size, unlabeled_data, labeled_data, seed):
     test_ccle_labels = np.squeeze(test_ccle_labels)
     tensor_test_ccle_labels = torch.stack([torch.tensor(lst) for lst in test_ccle_labels])
     
-    # ccle_labels = np.squeeze(labeled_data)
-    # tensor_ccle_labels =  torch.stack([torch.tensor(lst) for lst in ccle_labels])
     
     train_labeled_ccle_dataset = TensorDataset(
         torch.from_numpy(train_labeled_ccle_df.astype('float32')),
@@ -438,11 +429,6 @@ def CCLE_DataLoaders(drug_list, batch_size, unlabeled_data, labeled_data, seed):
         torch.from_numpy(test_labeled_ccle_df.astype('float32')),
         tensor_test_ccle_labels)
     
-    # labeled_ccle_dataset = TensorDataset(
-    #     torch.from_numpy(unlabeled_data.values.astype('float32')),
-    #     tensor_ccle_labels)
-    
-#     ******************************************************************************
 
 #     ******************** LABELED DATALOADERS WITHOUT K-FOLD **********************
 
@@ -458,16 +444,6 @@ def CCLE_DataLoaders(drug_list, batch_size, unlabeled_data, labeled_data, seed):
         shuffle=True,
         drop_last = True)
     
-    # labeled_ccle_dataloader = DataLoader(
-    #     labeled_ccle_dataset,
-    #     batch_size=batch_size,
-    #     shuffle=True)
-    
-#     ******************************************************************************
-    
-#     NOTE : for now passing train-test CCLE for both source and target
-#     CCLE_DataLoaders[0]... for accessing unlabeled dataloaders(src and target)
-#     CCLE_DataLoaders[1]... for accessing labeled dataloaders(src and target)... (train-test)
 
     return train_labeled_ccle_dataloader, test_labeled_ccle_dataloader
      

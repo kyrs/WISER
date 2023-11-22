@@ -11,8 +11,8 @@ import numpy as np
 
 import data
 from config import data_config, param_config
-import train_basis_code_adv
-import basis_dataloader
+from src import train_basis_code_adv
+from src import basis_dataloader
 
 import fine_tuning
 from copy import deepcopy
