@@ -2,7 +2,6 @@ import torch
 import sys
 sys.path.append("../")
 from torch.utils.data import TensorDataset, DataLoader
-from pytorch_geomety 
 import gzip
 import os
 import random
@@ -15,11 +14,83 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 from src.data_preprocessing import align_feature
 import warnings
 warnings.filterwarnings("ignore")
-
-# this function will return both unlabeled and labelled data for a drug in CCLE 
-
+ 
+from torch_geometric.data import HeteroData
+from torch_geometric.loader import DataLoader as geo_dataLoader
 # argument of this function would be a string (drug name) and the GDSC files to prevent rep reading...
+import json 
 
+def load_json(fileName):
+    ## load relational data 
+    listDict = []
+    with open(fileName,"r+") as fileReader:
+        for details in fileReader:
+            dictVal = json.loads(details)
+            listDict.append(dictVal)
+    return listDict
+
+def undirected_gene_coord_mat(listGeneDict, fetColList):
+    ## generate the undirected coord matrix for graph level processing
+    cntStatus = set()
+    xCoord = []
+    yCoord = []
+    for val in listGeneDict:
+        relationDict = val 
+        relation = relationDict["relation"]
+        geneX = relationDict["geneX"]
+        geneY = relationDict["geneY"]
+        out1  = list(fetColList).index(geneX)
+        out2 =  list(fetColList).index(geneY)
+        ind = (out1,out2)
+        revInd = (out2, out1)   
+        if ind not in cntStatus:
+            cntStatus.add(ind)
+            xCoord.append(out1)
+            yCoord.append (out2)
+        ## undirected graph , handling reverse cord
+        if revInd not in cntStatus:
+            cntStatus.add(revInd)
+            xCoord.append(out2)
+            yCoord.append(out1)
+
+    coordIndex = np.vstack([xCoord, yCoord])
+    return coordIndex
+
+def directed_drug_fet_coord_mat(listDrugDict, fetColList):
+    dictDrugMorgan = {}
+    for dictVal in listDrugDict:
+        if dictVal["drug"] not in dictDrugMorgan:
+            dictDrugMorgan[dictVal["drug"]] = [{"gene": dictVal["gene"], "morgan_rep":dictVal["morgan_rep"]}]
+        else:
+            dictDrugMorgan[dictVal["drug"]].append({"gene": dictVal["gene"], "morgan_rep":dictVal["morgan_rep"]})
+    
+
+    drugList = sorted(dictDrugMorgan.keys()) ## sorting is essential to maintain order with labeled dataloader
+    npFetList = []
+    drug_gene_edge_x = []
+    drug_gene_edge_y = []
+
+    for drug in drugList:
+        rep  = dictDrugMorgan[drug][0]["morgan_rep"]
+        npFetList.append(rep)
+        for index in range(len(dictDrugMorgan[drug])):
+            gene = dictDrugMorgan[drug][index]["gene"]
+            ## NOTE : CHECK each line of code
+            geneId = list(fetColList).index(gene)
+            drugId = drugList.index(drug)
+            drug_gene_edge_x.append(drugId)
+            drug_gene_edge_y.append(geneId)
+
+    drugRep = np.vstack(npFetList)
+    drug_gene_inter = np.vstack([drug_gene_edge_x, drug_gene_edge_y])  
+    assert(drugRep.shape[0]==len(drugList)) ## ensure gene ordering is correct 
+    assert(np.max(drug_gene_edge_x)==len(drugList)-1)
+    return drugRep, drug_gene_inter, drugList 
+
+def geometry_dataloader(basicDataLoader, cols):
+    ## Info abt relational data
+
+    pass
 
 def prepare_CCLE_files():
     
@@ -357,21 +428,77 @@ def TCGA_DataLoaders(unlabeled_TCGA_data, labeled_TCGA_data, batch_size, seed):
 
     return train_labeled_tcga_dataloader, test_labeled_tcga_dataloader
 
+def tcga_graphDataLoaders(fet_tcga_data, label_tcga, drugFet, drug_gene_inter, gene_gene_inter, batch_size, fetColList, seed):
+    train_labeled_tcga_df, test_labeled_tcga_df, train_tcga_labels, test_tcga_labels = train_test_split(
+        fet_tcga_data.values,
+        label_tcga.values,
+        test_size=0.1,
+        random_state = seed
+#     NOTE : not used stratification here as well
+    )
+   
+    train_tcga_labels = np.squeeze(train_tcga_labels)
+    test_tcga_labels = np.squeeze(test_tcga_labels)
+    
+
+    assert(train_labeled_tcga_df.shape[0] == train_tcga_labels.shape[0])
+    assert(test_labeled_tcga_df.shape[0] == test_tcga_labels.shape[0])
+    ## 
+    trainGraphList = []
+    testGraphList  = []
+    ## Hetro data based data structure
+    for trainFet, trainLabel in zip(train_labeled_tcga_df, train_tcga_labels):
+        trainObj = HeteroData(gene={"x" : torch.tensor(trainFet).unsqueeze(1).type(torch.float), "num_nodes" :len(trainFet), "y" : trainLabel},
+                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)}, 
+                     drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
+                     gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)})
+        trainGraphList.append(trainObj)
+    
+    
+    for testFet, testLabel in zip(test_labeled_tcga_df, test_tcga_labels):
+        testObj = HeteroData(gene={"x" : torch.tensor(testFet).unsqueeze(1).type(torch.float), "num_nodes" :len(testFet), "y":testLabel},
+                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)}, 
+                     drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
+                     gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)}) 
+     
+        testGraphList.append(testObj)
+    print(len(trainGraphList), len(testGraphList))
+    train_labeled_TCGA_dataloader = geo_dataLoader(trainGraphList, batch_size = batch_size, drop_last = True)
+    test_labeled_TCGA_dataloader = geo_dataLoader(testGraphList, batch_size = batch_size, drop_last = True)
+
+    return train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader
+    
+    
+    pass
+
 def get_dataloaders_for_alignment(drug_list, batch_size, ccle_only, seed, graphLoader):
 
     # *************** Getting Dataloaders for CCLE *****************
     CCLE_Files = prepare_CCLE_files()
+    fetColList = CCLE_Files['gex_features_df'].columns
+    assert("Sample" not in fetColList) ## ensure that coord index is based on numeric order of fet
     unlabeled_CCLE_data, labeled_CCLE_data = build_basis_CCLE(drug_list, CCLE_Files, seed)
-    train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader = CCLE_DataLoaders(labeled_CCLE_data,  batch_size, seed)
-    
-    
-    # *************** Getting Dataloaders for TCGA ****************
     gex_features_df = CCLE_Files['gex_features_df']
-    unlabeled_TCGA_data, labeled_TCGA_data = get_unsupervised_data_TCGA(drug_list, gex_features_df) # >>> used when using just unsupervised TCGA data = gene expression of ~9k samples
-    print(len(unlabeled_TCGA_data), len(labeled_TCGA_data))
 
-    print(f" TCGA sample size is around :  {len(labeled_TCGA_data)}") 
-    train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader = TCGA_DataLoaders(unlabeled_TCGA_data, labeled_TCGA_data, batch_size, seed)
+    if not graphLoader:
+        train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader = CCLE_DataLoaders(labeled_CCLE_data,  batch_size, seed)
+        fet_TCGA_data, label_TCGA_data = get_unsupervised_data_TCGA(drug_list, gex_features_df) # >>> used when using just unsupervised TCGA data = gene expression of ~9k samples
+        print(f" TCGA sample size is around :  {len(labeled_TCGA_data)}") 
+        train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader = TCGA_DataLoaders(fet_TCGA_data, label_TCGA_data, batch_size, seed)
+
+    
+    else:
+        listGeneRel = load_json(data_config.gene_gene_relation)
+        listDrugRel = load_json(data_config.drug_gene_relation)
+        gene_gene_inter = undirected_gene_coord_mat(listGeneDict = listGeneRel, fetColList = fetColList)
+        drugFet, drug_gene_inter, drug_list_unsup = directed_drug_fet_coord_mat(listDrugDict = listDrugRel, fetColList = fetColList)
+        train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader = ccle_graphDataLoaders(labeled_CCLE_data = labeled_CCLE_data, drugFet = drugFet, drug_gene_inter = drug_gene_inter, gene_gene_inter = gene_gene_inter, batch_size = batch_size, fetColList = fetColList, seed = seed)
+        
+        fet_TCGA_data, label_TCGA_data = get_unsupervised_data_TCGA(drug_list, gex_features_df) # >>> used when using just unsupervised TCGA data = gene expression of ~9k samples
+        train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader = tcga_graphDataLoaders(fet_tcga_data=fet_TCGA_data, label_tcga =label_TCGA_data, drugFet = drugFet, drug_gene_inter = drug_gene_inter, gene_gene_inter = gene_gene_inter, batch_size = batch_size, fetColList = fetColList, seed = seed)
+        
+    # *************** Getting Dataloaders for TCGA ****************
+    
 
     if ccle_only:
         return (train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader), (train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader) 
@@ -382,7 +509,7 @@ def get_dataloaders_for_alignment(drug_list, batch_size, ccle_only, seed, graphL
 # this function returns 2 DLs... labeled train and test of CCLE
 def CCLE_DataLoaders(labeled_CCLE_data, batch_size, seed):
 
-    train_labeled_ccle_df, test_labeled_ccle_df, train_ccle_labels, test_ccle_labels = labeled_data
+    train_labeled_ccle_df, test_labeled_ccle_df, train_ccle_labels, test_ccle_labels = labeled_CCLE_data
     
     train_ccle_labels = np.squeeze(train_ccle_labels)
     tensor_train_ccle_labels = torch.stack([torch.tensor(lst) for lst in train_ccle_labels])
@@ -398,10 +525,6 @@ def CCLE_DataLoaders(labeled_CCLE_data, batch_size, seed):
     test_labeled_ccle_dataset = TensorDataset(
         torch.from_numpy(test_labeled_ccle_df.astype('float32')),
         tensor_test_ccle_labels)
-    
-
-#     ******************** LABELED DATALOADERS WITHOUT K-FOLD **********************
-
     train_labeled_ccle_dataloader = DataLoader(
         train_labeled_ccle_dataset,
         batch_size=batch_size,
@@ -416,14 +539,49 @@ def CCLE_DataLoaders(labeled_CCLE_data, batch_size, seed):
     
 
     return train_labeled_ccle_dataloader, test_labeled_ccle_dataloader
+
+def ccle_graphDataLoaders(labeled_CCLE_data, drugFet, drug_gene_inter, gene_gene_inter, batch_size, fetColList, seed):
+    train_labeled_ccle_df, test_labeled_ccle_df, train_ccle_labels, test_ccle_labels = labeled_CCLE_data
+    train_ccle_labels = np.squeeze(train_ccle_labels)
+    test_ccle_labels = np.squeeze(test_ccle_labels)
+    
+
+    assert(train_labeled_ccle_df.shape[0] == train_ccle_labels.shape[0])
+    assert(test_labeled_ccle_df.shape[0] == test_ccle_labels.shape[0])
+    ## 
+    trainGraphList = []
+    testGraphList  = []
+    ## Hetro data based data structure
+    for trainFet, trainLabel in zip(train_labeled_ccle_df, train_ccle_labels):
+        trainObj = HeteroData(gene={"x" : torch.tensor(trainFet).unsqueeze(1).type(torch.float), "num_nodes" :len(trainFet), "y" : trainLabel},
+                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)}, 
+                     drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
+                     gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)})
+        trainGraphList.append(trainObj)
+    
+    
+    for testFet, testLabel in zip(test_labeled_ccle_df, test_ccle_labels):
+        testObj = HeteroData(gene={"x" : torch.tensor(testFet).unsqueeze(1).type(torch.float), "num_nodes" :len(testFet), "y":testLabel},
+                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)}, 
+                     drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
+                     gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)}) 
      
+        testGraphList.append(testObj)
+    
+    print(len(trainGraphList), len(testGraphList))
+    train_labeled_CCLE_dataloader = geo_dataLoader(trainGraphList, batch_size = batch_size, drop_last = True)
+    test_labeled_CCLE_dataloader = geo_dataLoader(testGraphList, batch_size = batch_size, drop_last = True)
+
+    return train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader
+
 if __name__ =="__main__":
     drug_list = param_config.basis_drug_list
     s_dataloaders, t_dataloaders = get_dataloaders_for_alignment(
         drug_list = drug_list,
         batch_size = 32,
-        ccle_only= True, 
+        ccle_only= False, 
         seed = 2020,
         graphLoader = True
     )
+    # load_json(data_config.gene_gene_relation)
     
