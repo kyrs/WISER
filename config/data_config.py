@@ -3,7 +3,9 @@ import os
 configuration file includes all related datasets 
 """
 
-root_data_folder = '../data/'
+# root_data_folder = '../data/'
+root_data_folder = "/home/ece/hdd/NUS-IISC/CODE-AE/data/" # NOTE : REMOVE THE ADD
+
 raw_data_folder = os.path.join(root_data_folder, 'raw_dat')
 preprocessed_data_folder = os.path.join(root_data_folder, 'preprocessed_dat')
 gene_feature_file = os.path.join(preprocessed_data_folder, 'CosmicHGNC_list.tsv')

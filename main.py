@@ -252,18 +252,6 @@ if __name__ == '__main__':
     # update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     # # ***********************************************************************************
 
-    best_models_dict_list = [
-        {'pretrain_num_epochs': 300, 'train_num_epochs': 2500, 'dop': 0.1, 'inv_temp': 1.5},
-        {'pretrain_num_epochs': 50, 'train_num_epochs': 2500, 'dop': 0.1, 'inv_temp': 1},
-        {'pretrain_num_epochs': 100, 'train_num_epochs': 2500, 'dop': 0.0, 'inv_temp': 2},
-        {'pretrin_num_epochs': 50, 'train_num_epochs': 2000, 'dop': 0.0, 'inv_temp': 0.001},
-        {'pretrain_num_epochs': 300, 'train_num_epochs': 1000, 'dop': 0.1, 'inv_temp': 100},
-        {'pretrain_num_epochs': 300, 'train_num_epochs': 1000, 'dop': 0.1, 'inv_temp': 100},
-        {'pretrain_num_epochs': 50, 'train_num_epochs': 2000, 'dop': 0.1, 'inv_temp': 10},
-        {'pretrain_num_epochs': 100, 'train_num_epochs': 2000, 'dop': 0.1, 'inv_temp': 0.001},
-        {'pretrain_num_epochs': 50, 'train_num_epochs': 2500, 'dop': 0.1, 'inv_temp': 1},
-        {'pretrain_num_epochs': 50, 'train_num_epochs': 2500, 'dop': 0.0, 'inv_temp': 10}
-    ]
 
     # CHANGE FOLDER_NAME
     folder_name = 'model_save'

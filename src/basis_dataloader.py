@@ -1,15 +1,18 @@
 import torch
+import sys
+sys.path.append("../")
 from torch.utils.data import TensorDataset, DataLoader
+from pytorch_geomety 
 import gzip
 import os
 import random
 from collections import defaultdict
 import numpy as np
 import pandas as pd
-import data_config
+from config import data_config,param_config
 from IPython.display import display
 from sklearn.model_selection import train_test_split, StratifiedKFold
-from data_preprocessing import align_feature
+from src.data_preprocessing import align_feature
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -80,10 +83,7 @@ def fetchCCLE_datafordrug(CCLE_Files, drug, diagnosis = False, threshold = None)
     target_df.index = target_df.index.map(gdsc_sample_mapping_dict)
     target_df = target_df.loc[target_df.index.dropna()]
     
-    ########### Additional Changes ####################
-    #NOTE : Checks 
-    # 1. class label for drug is same as what is there in original code for an 5 random drugs.
-    # 2. Explanation   
+    ########### Additional Changes ####################  
     here = gdsc_target_df.columns.tolist()
     here.insert(0, 'COSMIC_ID')
     arr = np.concatenate((np.array(target_df.index).reshape(-1, 1), ), axis = 1)
@@ -102,8 +102,6 @@ def fetchCCLE_datafordrug(CCLE_Files, drug, diagnosis = False, threshold = None)
     if threshold == None:
         threshold = np.median(ccle_target_df['Z_SCORE'].loc[ccle_labeled_samples].values)
 
-    # print(f"drug {drug}, threshold {threshold}")
-#    generating labels
     ccle_labels = (ccle_target_df['Z_SCORE'].loc[ccle_labeled_samples] < threshold).astype('int')
     ccle_labeled_feature_df = gex_features_df.loc[ccle_labeled_samples]
     ccle_target_df['tZ_SCORE'] = ccle_labels
@@ -116,7 +114,6 @@ def fetchCCLE_datafordrug(CCLE_Files, drug, diagnosis = False, threshold = None)
         labeled_data['drug_response'] = labeled_data['tZ_SCORE'].apply(lambda x: {f"{drug} (Diagnosis)" : x})
     else:
         labeled_data['drug_response'] = labeled_data['tZ_SCORE'].apply(lambda x: {drug: x})
-    # print(labeled_data)
     return unlabelled_data, labeled_data
 
 def build_basis_CCLE(drug_list, CCLE_Files, seed):
@@ -142,7 +139,7 @@ def build_basis_CCLE(drug_list, CCLE_Files, seed):
 
         
         
-        assert(len(labeled_data) > 0 ) # NOTE :  check with wrong name
+        assert(len(labeled_data) > 0 ) 
         drug_df_list.append(labeled_data)
 
     # NOTE : check with original data loader (class label )
@@ -158,10 +155,10 @@ def build_basis_CCLE(drug_list, CCLE_Files, seed):
                 for key, value in dictionary.items():
                     common_data[index][key] = value
 
+    # print(common_data)
     # Create the common DataFrame from the common data dictionary
     common_lbld_df = pd.DataFrame.from_dict(common_data, orient='index')
     common_lbld_df = common_lbld_df.fillna(-1)
-    # NOTE : check 
     # Generate basis for each row
     basis_list = []
     for _, row in common_lbld_df.iterrows():
@@ -178,7 +175,6 @@ def build_basis_CCLE(drug_list, CCLE_Files, seed):
     # basis_list
     vectorized_list = [(list(d.values())) for d in basis_list]
     
-#     assert statement needed?
     for d, l in zip(basis_list, vectorized_list):
         assert list(d.values()) == l, "Values order mismatch!"
 
@@ -317,12 +313,13 @@ def get_unsupervised_data_TCGA(drug_list, gex_features_df):
     tcga_gex_feature_df = tcga_gex_feature_df.groupby(level=0).mean()
     df_unlabeled = tcga_gex_feature_df
 
+    ## maintaining consistency with CCLE samples
     df_labeled = pd.DataFrame({'Sample' : df_unlabeled.index, 'drug_responses' : [[-1] * len(drug_list)] * len(df_unlabeled.index)})
     df_labeled = df_labeled.set_index('Sample')
     return df_unlabeled, df_labeled
 
 
-def TCGA_DataLoaders(drug_list, batch_size, unlabeled_TCGA_data, labeled_TCGA_data, seed):
+def TCGA_DataLoaders(unlabeled_TCGA_data, labeled_TCGA_data, batch_size, seed):
     train_labeled_tcga_df, test_labeled_tcga_df, train_tcga_labels, test_tcga_labels = train_test_split(
         unlabeled_TCGA_data.values,
         labeled_TCGA_data.values,
@@ -360,26 +357,21 @@ def TCGA_DataLoaders(drug_list, batch_size, unlabeled_TCGA_data, labeled_TCGA_da
 
     return train_labeled_tcga_dataloader, test_labeled_tcga_dataloader
 
-def get_dataloaders_for_alignment(drug_list, batch_size, ccle_only, seed):
+def get_dataloaders_for_alignment(drug_list, batch_size, ccle_only, seed, graphLoader):
 
     # *************** Getting Dataloaders for CCLE *****************
-    # NOTE : hardcoded file reading...
     CCLE_Files = prepare_CCLE_files()
     unlabeled_CCLE_data, labeled_CCLE_data = build_basis_CCLE(drug_list, CCLE_Files, seed)
-    print(len(drug_list))
-    train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader = CCLE_DataLoaders(drug_list, batch_size, unlabeled_CCLE_data, labeled_CCLE_data, seed)
+    train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader = CCLE_DataLoaders(labeled_CCLE_data,  batch_size, seed)
     
     
     # *************** Getting Dataloaders for TCGA ****************
     gex_features_df = CCLE_Files['gex_features_df']
-    
-    # unlabeled_TCGA_data, labeled_TCGA_data = get_data_for_TCGA(drug_list, gex_features_df) >>> used when aligning with supervised TCGA data
     unlabeled_TCGA_data, labeled_TCGA_data = get_unsupervised_data_TCGA(drug_list, gex_features_df) # >>> used when using just unsupervised TCGA data = gene expression of ~9k samples
     print(len(unlabeled_TCGA_data), len(labeled_TCGA_data))
 
-    print(f"Warning : TCGA sample size is around :  {len(labeled_TCGA_data)}")
-    #NOTE :  check V-IMP warning  
-    train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader = TCGA_DataLoaders(drug_list, batch_size, unlabeled_TCGA_data, labeled_TCGA_data, seed)
+    print(f" TCGA sample size is around :  {len(labeled_TCGA_data)}") 
+    train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader = TCGA_DataLoaders(unlabeled_TCGA_data, labeled_TCGA_data, batch_size, seed)
 
     if ccle_only:
         return (train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader), (train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader) 
@@ -388,29 +380,7 @@ def get_dataloaders_for_alignment(drug_list, batch_size, ccle_only, seed):
 
 
 # this function returns 2 DLs... labeled train and test of CCLE
-def CCLE_DataLoaders(drug_list, batch_size, unlabeled_data, labeled_data, seed):
-    
-#     NOTE : in src code train test split was done by stratifying... here not stratifying...
-    
-#     ******************** UNLABELED DATASETS WITHOUT K-FOLD **********************
-    train_unlabeled_ccle_df, test_unlabeled_ccle_df = train_test_split(unlabeled_data, test_size=0.1, random_state = seed)
-    train_unlabeled_ccle_dataset = TensorDataset(torch.from_numpy(train_unlabeled_ccle_df.values.astype('float32')))
-    test_unlabeled_ccle_dataset = TensorDataset(torch.from_numpy(test_unlabeled_ccle_df.values.astype('float32')))
-    unlabeled_CCLE_dataset = TensorDataset(torch.from_numpy(unlabeled_data.values.astype('float32')))
-
-#     ******************************************************************************
-    
-#     ******************** UNLABELED DATALOADERS WITHOUT K-FOLD **********************
-     
-    train_unlabeled_ccle_dataloader = DataLoader(train_unlabeled_ccle_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-    test_unlabeled_ccle_dataloader = DataLoader(test_unlabeled_ccle_dataset, batch_size=batch_size, shuffle=True)
-    unlabeled_CCLE_dataloader = DataLoader(unlabeled_CCLE_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-    
-#     ******************************************************************************
-        
-    
-    
-#     ******************** LABELED DATASETS WITHOUT K-FOLD **********************
+def CCLE_DataLoaders(labeled_CCLE_data, batch_size, seed):
 
     train_labeled_ccle_df, test_labeled_ccle_df, train_ccle_labels, test_ccle_labels = labeled_data
     
@@ -447,5 +417,13 @@ def CCLE_DataLoaders(drug_list, batch_size, unlabeled_data, labeled_data, seed):
 
     return train_labeled_ccle_dataloader, test_labeled_ccle_dataloader
      
-    
+if __name__ =="__main__":
+    drug_list = param_config.basis_drug_list
+    s_dataloaders, t_dataloaders = get_dataloaders_for_alignment(
+        drug_list = drug_list,
+        batch_size = 32,
+        ccle_only= True, 
+        seed = 2020,
+        graphLoader = True
+    )
     
