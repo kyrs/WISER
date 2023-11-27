@@ -121,7 +121,9 @@ def main(args, basis_drug_list, folder_name, update_params_dict):
         drug_list = basis_drug_list,
         batch_size=training_params['unlabeled']['batch_size'],
         ccle_only= ccle_only, 
-        seed = seed
+        seed = seed,
+        graphLoader = config.graphLoader
+
     )
 
     # start Alignment  training
@@ -151,11 +153,12 @@ def main(args, basis_drug_list, folder_name, update_params_dict):
             threshold=args.a_thres,
             days_threshold=args.days_thres,
             pdtc_flag=args.pdtc_flag,
-            n_splits=args.n)
+            n_splits=args.n,
+            graphLoader=param_config.graphLoader)
 
 
         fold_count = 0
-        
+        ## NOTE: Remove sparce weight vec
         for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, labeled_tcga_dataloader in labeled_dataloader_generator:
             ft_encoder = deepcopy(encoder)
             ft_basis_vec = deepcopy(basis_vec)

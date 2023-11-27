@@ -1,7 +1,7 @@
 import torch
 
 results_data = {"TCGA" : -1, "CCLE" : -2}
-
+graphLoader = True
 cosine_flag = True
 ccle_only = False 
 seed = 2020
