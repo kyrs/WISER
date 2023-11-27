@@ -120,14 +120,11 @@ def get_projected_val(shared_encoder, basis_vec, X, ccle_only, drug_dim, cosine_
                          output_dim=kwargs['input_dim'],
                          hidden_dims=kwargs['encoder_hidden_dims'][::-1],
                          dop=kwargs['dop']).to(kwargs['device'])
-    sparse_weight_vec = torch.nn.Linear(drug_dim, 1).to(kwargs["device"])
-    sparse_weight_vec_flag = False ## Note : Hardcodingg the flag
-
+    
     # *******************************************************
     dsnae = DSNBasisAE(shared_encoder=shared_encoder,
                     decoder=shared_decoder,
                     basis_vec = basis_vec,
-                    sparse_weight_vec = sparse_weight_vec,
                     input_dim=kwargs['input_dim'],
                     latent_dim=kwargs['latent_dim'],
                     testing_drug_len = kwargs['testing_drug_len'],
@@ -137,7 +134,6 @@ def get_projected_val(shared_encoder, basis_vec, X, ccle_only, drug_dim, cosine_
                     cosine_flag = cosine_flag,
                     cns_basis_label_loss = False, # not required
                     psuedo_label_flag = False, # not required
-                    basis_selection_flag = sparse_weight_vec_flag, # not required
                     pseudo_conf_threshold = 0.7, # not required
                     norm_flag=kwargs['norm_flag']).to(kwargs['device'])
     
@@ -164,8 +160,6 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
 
     basis_vec = torch.nn.Embedding(drug_dim, kwargs['latent_dim']).to(kwargs['device'])
 
-    sparse_weight_vec = torch.nn.Linear(drug_dim, 1).to(kwargs["device"])
-    sparse_weight_vec_flag = False 
     inv_temp = kwargs['inv_temp']
 
     shared_decoder = MLP(input_dim=2 * kwargs['latent_dim'],
@@ -176,7 +170,6 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
     s_dsnae = DSNBasisAE(shared_encoder=shared_encoder,
                     decoder=shared_decoder,
                     basis_vec = basis_vec,
-                    sparse_weight_vec = sparse_weight_vec,
                     input_dim=kwargs['input_dim'],
                     latent_dim=kwargs['latent_dim'],
                     testing_drug_len = kwargs['testing_drug_len'],
@@ -187,14 +180,12 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     cns_basis_label_loss = True, 
                     psuedo_label_flag = False,
                     pseudo_conf_threshold = 0.7,
-                    basis_selection_flag = sparse_weight_vec_flag,
                     norm_flag=kwargs['norm_flag']).to(kwargs['device'])
                     
 
     t_dsnae = DSNBasisAE(shared_encoder=shared_encoder,
                     decoder=shared_decoder,
                     basis_vec = basis_vec,
-                    sparse_weight_vec = sparse_weight_vec,
                     input_dim=kwargs['input_dim'],
                     latent_dim=kwargs['latent_dim'],
                     testing_drug_len = kwargs['testing_drug_len'],
@@ -204,7 +195,6 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     cosine_flag = cosine_flag,
                     cns_basis_label_loss = False,
                     psuedo_label_flag = True, 
-                    basis_selection_flag = sparse_weight_vec_flag,
                     pseudo_conf_threshold = 0.7,
                     norm_flag=kwargs['norm_flag']).to(kwargs['device'])
    
@@ -220,14 +210,12 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                  shared_decoder.parameters(),
                  shared_encoder.parameters(),
                  basis_vec.parameters(),
-                 sparse_weight_vec.parameters()
-                 ]
+                                 ]
     t_ae_params = [t_dsnae.private_encoder.parameters(),
                    s_dsnae.private_encoder.parameters(),
                    shared_decoder.parameters(),
                    shared_encoder.parameters(),
                    basis_vec.parameters(),
-                   sparse_weight_vec.parameters()
                    ]
 
     ae_optimizer = torch.optim.AdamW(chain(*ae_params), lr=kwargs['lr'])
@@ -335,4 +323,4 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
         except FileNotFoundError:
             raise Exception("No pre-trained encoder")
 
-    return t_dsnae.shared_encoder, (dsnae_train_history, dsnae_val_history, critic_train_history, gen_train_history), basis_vec, sparse_weight_vec, sparse_weight_vec_flag, inv_temp
+    return t_dsnae.shared_encoder, (dsnae_train_history, dsnae_val_history, critic_train_history, gen_train_history), basis_vec, inv_temp

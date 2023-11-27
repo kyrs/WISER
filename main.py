@@ -127,7 +127,8 @@ def main(args, basis_drug_list, folder_name, update_params_dict):
     )
 
     # start Alignment  training
-    encoder, historys, basis_vec, sparse_weight_vec, sparse_weight_vec_flag, inv_temp = train_fn(s_dataloaders=s_dataloaders,
+    ## NOTE: print and check inv_temp
+    encoder, historys, basis_vec,  inv_temp = train_fn(s_dataloaders=s_dataloaders,
                                  t_dataloaders=t_dataloaders, ccle_only = ccle_only, drug_dim = len(basis_drug_list), cosine_flag = cosine_flag,
                                  **wrap_training_params(training_params, type='unlabeled'))
     
@@ -162,13 +163,10 @@ def main(args, basis_drug_list, folder_name, update_params_dict):
         for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, labeled_tcga_dataloader in labeled_dataloader_generator:
             ft_encoder = deepcopy(encoder)
             ft_basis_vec = deepcopy(basis_vec)
-            ft_sparse_weight_vec = deepcopy(sparse_weight_vec)
-
+            
             target_classifier, ft_historys = fine_tuning.fine_tune_encoder_basis(
                 encoder=ft_encoder,
                 basis_vec = ft_basis_vec,
-                sparse_weight_vec = ft_sparse_weight_vec,
-                sparse_weight_vec_flag = sparse_weight_vec_flag,
                 inv_temp = inv_temp,
                 cosine_flag=cosine_flag,
                 train_dataloader=train_labeled_ccle_dataloader,
