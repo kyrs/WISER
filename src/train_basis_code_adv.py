@@ -1,10 +1,10 @@
 import os
 import torch.autograd as autograd
 from itertools import chain
-from dsn_basis_ae_final import DSNBasisAE
-from evaluation_utils import *
-from mlp import MLP
-from train_code_base import eval_basis_dsnae_epoch, basis_dsn_ae_train_step
+from src.dsn_basis_ae_final import DSNBasisAE
+from src.evaluation_utils import *
+from src.mlp import MLP,geo_MLP
+from src.train_code_base import eval_basis_dsnae_epoch, basis_dsn_ae_train_step
 from collections import OrderedDict
 import numpy as np
 
@@ -153,11 +153,19 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
     t_train_dataloader = t_dataloaders[0]
     t_test_dataloader = t_dataloaders[1]
 
-    shared_encoder = MLP(input_dim=kwargs['input_dim'],
-                         output_dim=kwargs['latent_dim'],
-                         hidden_dims=kwargs['encoder_hidden_dims'],
-                         dop=kwargs['dop']).to(kwargs['device'])
-
+    if not graphLoader:
+        shared_encoder = MLP(input_dim=kwargs['input_dim'],
+                            output_dim=kwargs['latent_dim'],
+                            hidden_dims=kwargs['encoder_hidden_dims'],
+                            dop=kwargs['dop']).to(kwargs['device'])
+    else:
+        shared_encoder = geo_MLP(
+                            input_dim=kwargs['input_dim'],
+                            output_dim=kwargs['latent_dim'],
+                            hidden_dims=kwargs['encoder_hidden_dims'],
+                            dop=kwargs['dop'],
+                            num_geo_layer = kwargs["num_geo_layer"]
+                            ).to(kwargs['device'])
     basis_vec = torch.nn.Embedding(drug_dim, kwargs['latent_dim']).to(kwargs['device'])
 
     inv_temp = kwargs['inv_temp']
@@ -180,7 +188,9 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     cns_basis_label_loss = True, 
                     psuedo_label_flag = False,
                     pseudo_conf_threshold = 0.7,
-                    norm_flag=kwargs['norm_flag']).to(kwargs['device'])
+                    norm_flag=kwargs['norm_flag'],
+                    graphLoader = graphLoader
+                    ).to(kwargs['device'])
                     
 
     t_dsnae = DSNBasisAE(shared_encoder=shared_encoder,
@@ -196,7 +206,9 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     cns_basis_label_loss = False,
                     psuedo_label_flag = True, 
                     pseudo_conf_threshold = 0.7,
-                    norm_flag=kwargs['norm_flag']).to(kwargs['device'])
+                    norm_flag=kwargs['norm_flag'],
+                    graphLoader = graphLoader
+                    ).to(kwargs['device'])
    
     confounding_classifier = MLP(input_dim=kwargs['latent_dim'] * 2,
                                  output_dim=1,
@@ -226,11 +238,8 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
     dsnae_val_history = defaultdict(list)
     critic_train_history = defaultdict(list)
     gen_train_history = defaultdict(list)
-    # classification_eval_test_history = defaultdict(list)
-    # classification_eval_train_history = defaultdict(list)
 
     if kwargs['retrain_flag']:        
-        # start dsnae pre-training
         for epoch in range(int(kwargs['pretrain_num_epochs'])):
             if epoch % 50 == 0:
                 print(f'AE training epoch {epoch}')
@@ -304,21 +313,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
 
     else:
         try:
-            # if kwargs['norm_flag']:
-            #     loaded_model = torch.load(os.path.join(kwargs['model_save_folder'], 'a_t_dsnae.pt'))
-            #     new_loaded_model = {key: val for key, val in loaded_model.items() if key in t_dsnae.state_dict()}
-            #     new_loaded_model['shared_encoder.output_layer.0.weight'] = loaded_model[
-            #         'shared_encoder.output_layer.3.weight']
-            #     new_loaded_model['shared_encoder.output_layer.0.bias'] = loaded_model[
-            #         'shared_encoder.output_layer.3.bias']
-            #     new_loaded_model['decoder.output_layer.0.weight'] = loaded_model['decoder.output_layer.3.weight']
-            #     new_loaded_model['decoder.output_layer.0.bias'] = loaded_model['decoder.output_layer.3.bias']
-
-            #     corrected_model = OrderedDict({key: new_loaded_model[key] for key in t_dsnae.state_dict()})
-            #     t_dsnae.load_state_dict(corrected_model)
-            # else:
-                #t_dsnae.load_state_dict(torch.load(os.path.join(kwargs['model_save_folder'], 'a_t_dsnae.pt')))
-                t_dsnae.load_state_dict(torch.load(os.path.join(kwargs['model_save_folder'], 'a_t_dsnae.pt')))
+            t_dsnae.load_state_dict(torch.load(os.path.join(kwargs['model_save_folder'], 'a_t_dsnae.pt')))
 
         except FileNotFoundError:
             raise Exception("No pre-trained encoder")

@@ -1,13 +1,13 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from base_ae import BaseAE
-from types_ import *
+from src.base_ae import BaseAE
+from src.types_ import *
 from typing import List
 
 class DSNBasisAE(BaseAE):
-    def __init__(self, shared_encoder, decoder, basis_vec, sparse_weight_vec, input_dim: int, latent_dim: int, testing_drug_len : int, inv_temp : int = 1, pseudo_conf_threshold = 0.9, alpha: float = 1.0, beta : float = 1.0, gamma : float = 1.0, eta : float = 1.0,
-                 basis_weight = torch.ones(1),psuedo_label_flag = False, psuedo_label_update_cnt = 50,  hidden_dims: List = None, dop: float = 0.1, noise_flag: bool = False, norm_flag: bool = False, cns_basis_label_loss : bool = True, cosine_flag: bool = False,
+    def __init__(self, shared_encoder, decoder, basis_vec, sparse_weight_vec, num_geo_layer, input_dim: int, latent_dim: int, testing_drug_len : int, inv_temp : int = 1, pseudo_conf_threshold = 0.9, alpha: float = 1.0, beta : float = 1.0, gamma : float = 1.0, eta : float = 1.0,
+                 basis_weight = torch.ones(1), graphLoader=False,  psuedo_label_flag = False, psuedo_label_update_cnt = 50,  hidden_dims: List = None, dop: float = 0.1, noise_flag: bool = False, norm_flag: bool = False, cns_basis_label_loss : bool = True, cosine_flag: bool = False,
                  **kwargs) -> None:
 
         super(DSNBasisAE, self).__init__()
@@ -29,6 +29,9 @@ class DSNBasisAE(BaseAE):
         self.cns_basis_label_loss = cns_basis_label_loss
         
         self.cosine_flag = cosine_flag
+        self.num_geo_layer = num_geo_layer
+
+        self.graphLoader = graphLoader
 
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256, 512]
@@ -39,37 +42,53 @@ class DSNBasisAE(BaseAE):
         self.sparse_weight_vec = sparse_weight_vec
         
         # print('train_fn, dsnae : ', self.basis_vec.weight)
-        modules = []
+        # modules = []
 
-        
-        modules.append(
-            nn.Sequential(
-                nn.Linear(input_dim, hidden_dims[0], bias=True),
-                # nn.BatchNorm1d(hidden_dims[0]),
-                nn.ReLU(),
-                nn.Dropout(self.dop)
-            )
-        )
+    
+        # modules.append(
+        #     nn.Sequential(
+        #         nn.Linear(input_dim, hidden_dims[0], bias=True),
+        #         nn.ReLU(),
+        #         nn.Dropout(self.dop)
+        #     )
+        # )
 
-        for i in range(len(hidden_dims) - 1):
-            modules.append(
-                nn.Sequential(
-                    nn.Linear(hidden_dims[i], hidden_dims[i + 1], bias=True),
-                    # nn.Dropout(0.1),
-                    # nn.BatchNorm1d(hidden_dims[i + 1]),
-                    nn.ReLU(),
-                    nn.Dropout(self.dop)
-                )
-            )
-        modules.append(nn.Dropout(self.dop))
-        modules.append(nn.Linear(hidden_dims[-1], latent_dim, bias=True))
-        
-        self.private_encoder = nn.Sequential(*modules)
+        # for i in range(len(hidden_dims) - 1):
+        #     modules.append(
+        #         nn.Sequential(
+        #             nn.Linear(hidden_dims[i], hidden_dims[i + 1], bias=True),
+
+        #             nn.ReLU(),
+        #             nn.Dropout(self.dop)
+        #         )
+        #     )
+        # modules.append(nn.Dropout(self.dop))
+        # modules.append(nn.Linear(hidden_dims[-1], latent_dim, bias=True))
+
+        if not self.graphLoader :    
+            self.private_encoder =  MLP(input_dim=input_dim,
+                                    output_dim=latent_dim,
+                                    hidden_dims=hidden_dims,
+                                    dop=self.dop).to(kwargs['device'])
+        else:
+            self.private_encoder = geo_MLP(
+                                input_dim=input_dim,
+                                output_dim=latent_dim,
+                                hidden_dims=hidden_dims,
+                                dop=dop,
+                                num_geo_layer = num_geo_layer
+                            ).to(kwargs['device'])
+            
+            
         self.softmax = nn.Softmax(dim = -1)
 
-    def p_encode(self, input: Tensor) -> Tensor:
+    def p_encode(self, input) -> Tensor:
         if self.noise_flag and self.training:
-            latent_code = self.private_encoder(input + torch.randn_like(input, requires_grad=False) * 0.1)
+            if not self.graphLoader:
+                latent_code = self.private_encoder(input + torch.randn_like(input, requires_grad=False) * 0.1)
+            else:
+                input["gene"] = input["gene"] + torch.randn_like(input["gene"], requires_grad=False) * 0.1
+                latent_code = self.private_encoder(input)
         else:
             latent_code = self.private_encoder(input)
 
@@ -78,7 +97,7 @@ class DSNBasisAE(BaseAE):
         else:
             return latent_code
 
-    def s_encode(self, input: Tensor) -> Tensor:
+    def s_encode(self, Tensor) -> Tensor:
         if self.noise_flag and self.training:
             latent_code = self.shared_encoder(input + torch.randn_like(input, requires_grad=False) * 0.1)
         else:
@@ -88,7 +107,7 @@ class DSNBasisAE(BaseAE):
         else:
             return latent_code
 
-    def get_proj_val(self, input: Tensor) -> Tensor:
+    def get_proj_val(self,  Tensor) -> Tensor:
         p_latent_code = self.p_encode(input)
         s_latent_code = self.s_encode(input)
         
@@ -202,9 +221,8 @@ class DSNBasisAE(BaseAE):
         if(torch.isnan(recons_loss)):
             print(f'weighted_basis {weighted_basis}')
             print(f'basis_vec {self.basis_vec.weight}')
-            assert(1 == 2)
-        # assert(3 == 4)
-
+            assert(False)
+        
         print(f'alpha : {self.alpha} beta : {self.beta} gamma : {self.gamma} eta : {self.eta}')
         if(self.cns_basis_label_loss or self.psuedo_label_flag):
             loss = recons_loss + self.alpha * ortho_loss + self.beta * loss_commit + self.gamma * loss_commit_reverse + self.eta * basis_label_loss

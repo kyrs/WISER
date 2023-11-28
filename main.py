@@ -232,11 +232,11 @@ if __name__ == '__main__':
     parser.add_argument('--testing_drug_len', dest='testing_drug_len', nargs='?', type=int, default= len(drug_list))
     args = parser.parse_args()
     
-        params_grid = {
-        "pretrain_num_epochs": [50, 100, 300, 500, 800, 1000],
-        "train_num_epochs": [0, 1000, 1500, 2000, 2500, 3000],
-        "dop": [0.0, 0.1],
-        "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
+    params_grid = {
+    "pretrain_num_epochs": [50, 100, 300, 500, 800, 1000],
+    "train_num_epochs": [0, 1000, 1500, 2000, 2500, 3000],
+    "dop": [0.0, 0.1],
+    "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
     }
 
     if args.method not in ['code_adv', 'adsn', 'adae', 'dsnw']:

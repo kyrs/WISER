@@ -1,6 +1,6 @@
 from torch import nn
 from abc import abstractmethod
-from types_ import *
+from src.types_ import *
 from typing import List, Any
 
 
