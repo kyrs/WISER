@@ -1,8 +1,8 @@
-from evaluation_utils import evaluate_target_classification_epoch, model_save_check, predict_target_classification
+from src.evaluation_utils import evaluate_target_classification_epoch, model_save_check, predict_target_classification
 from collections import defaultdict
 from itertools import chain
-from mlp import MLP, geo_MLP
-from encoder_decoder_final import  EncoderDecoder_basis
+from src.mlp import MLP, geo_MLP
+from src.encoder_decoder_final import  EncoderDecoder_basis
 import os
 import torch
 import torch.nn as nn

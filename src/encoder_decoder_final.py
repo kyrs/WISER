@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from types_ import *
+from src.types_ import *
 
 
 

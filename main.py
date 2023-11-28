@@ -14,7 +14,7 @@ from config import data_config, param_config
 from src import train_basis_code_adv
 from src import basis_dataloader
 
-import fine_tuning
+from src import fine_tuning
 from copy import deepcopy
 
 
@@ -76,11 +76,15 @@ def set_seed(seed):
     if torch.cuda.device_count() > 0:
         torch.cuda.manual_seed_all(seed)
 
-def main(args, basis_drug_list, folder_name, update_params_dict):
+def main(args, update_params_dict):
     ############ param config###############
     device = param_config.device
     cosine_flag = param_config.cosine_flag
-    ccle_only = param_config.ccle_only    
+    ccle_only = param_config.ccle_only   
+    folder_name = param_config.folder_name
+    seed = param_config.seed
+    graphLoader = param_config.graphLoader
+
     print(f"running experiment with CCLE only : {ccle_only} cosine flag : {cosine_flag}")
     eff_drug_list = param_config.eff_drug_list
     test_data_index  = param_config.test_data_index
@@ -109,7 +113,7 @@ def main(args, basis_drug_list, folder_name, update_params_dict):
             'es_flag': False,
             'retrain_flag': args.retrain_flag,
             'norm_flag': args.norm_flag,
-            'testing_drug_len' : args.testing_drug_len,
+            'testing_drug_len' : len(eff_drug_list),
         })
     
     safe_make_dir(training_params['model_save_folder'])
@@ -122,15 +126,16 @@ def main(args, basis_drug_list, folder_name, update_params_dict):
         batch_size=training_params['unlabeled']['batch_size'],
         ccle_only= ccle_only, 
         seed = seed,
-        graphLoader = config.graphLoader
-
+        graphLoader = graphLoader
     )
 
     # start Alignment  training
     ## NOTE: print and check inv_temp
     encoder, historys, basis_vec,  inv_temp = train_fn(s_dataloaders=s_dataloaders,
-                                 t_dataloaders=t_dataloaders, ccle_only = ccle_only, drug_dim = len(basis_drug_list), cosine_flag = cosine_flag,
-                                 **wrap_training_params(training_params, type='unlabeled'))
+                                 t_dataloaders=t_dataloaders, ccle_only = ccle_only, 
+                                 drug_dim = len(basis_drug_list), cosine_flag = cosine_flag, 
+                                 graphLoader=graphLoader, **wrap_training_params(training_params, 
+                                 type='unlabeled'))
     
     if args.retrain_flag:
         with open(os.path.join(training_params['model_save_folder'], f'unlabel_train_history.pickle'),
@@ -155,7 +160,7 @@ def main(args, basis_drug_list, folder_name, update_params_dict):
             days_threshold=args.days_thres,
             pdtc_flag=args.pdtc_flag,
             n_splits=args.n,
-            graphLoader=param_config.graphLoader)
+            graphLoader=graphLoader)
 
 
         fold_count = 0
@@ -172,7 +177,7 @@ def main(args, basis_drug_list, folder_name, update_params_dict):
                 train_dataloader=train_labeled_ccle_dataloader,
                 val_dataloader=test_labeled_ccle_dataloader,
                 test_dataloader=labeled_tcga_dataloader,
-                seed=fold_count,
+                seed=fold_count, ## CHECK
                 normalize_flag=args.norm_flag,
                 metric_name=args.metric,
                 task_save_folder=task_save_folder,
@@ -229,7 +234,6 @@ if __name__ == '__main__':
     hpt_group.add_argument('--hpt', dest='hpt_flag', action='store_true')
     hpt_group.add_argument('--no-hpt', dest='hpt_flag', action='store_false')
     parser.set_defaults(hpt_flag=False)
-    parser.add_argument('--testing_drug_len', dest='testing_drug_len', nargs='?', type=int, default= len(drug_list))
     args = parser.parse_args()
     
     params_grid = {
@@ -258,5 +262,5 @@ if __name__ == '__main__':
     folder_name = 'model_save'
 
     for param_dict in update_params_dict_list:
-        main(args=args, drug_list = basis_drug_list, folder_name = folder_name, update_params_dict=param_dict)
+        main(args=args, update_params_dict=param_dict)
 

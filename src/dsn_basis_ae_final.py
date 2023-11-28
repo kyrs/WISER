@@ -2,11 +2,12 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from src.base_ae import BaseAE
+from src.mlp import MLP, geo_MLP
 from src.types_ import *
 from typing import List
 
 class DSNBasisAE(BaseAE):
-    def __init__(self, shared_encoder, decoder, basis_vec, sparse_weight_vec, num_geo_layer, input_dim: int, latent_dim: int, testing_drug_len : int, inv_temp : int = 1, pseudo_conf_threshold = 0.9, alpha: float = 1.0, beta : float = 1.0, gamma : float = 1.0, eta : float = 1.0,
+    def __init__(self, shared_encoder, decoder, basis_vec,  num_geo_layer, input_dim: int, latent_dim: int, testing_drug_len : int, inv_temp : int = 1, pseudo_conf_threshold = 0.9, alpha: float = 1.0, beta : float = 1.0, gamma : float = 1.0, eta : float = 1.0,
                  basis_weight = torch.ones(1), graphLoader=False,  psuedo_label_flag = False, psuedo_label_update_cnt = 50,  hidden_dims: List = None, dop: float = 0.1, noise_flag: bool = False, norm_flag: bool = False, cns_basis_label_loss : bool = True, cosine_flag: bool = False,
                  **kwargs) -> None:
 
@@ -39,7 +40,6 @@ class DSNBasisAE(BaseAE):
         self.shared_encoder = shared_encoder
         self.decoder = decoder
         self.basis_vec = basis_vec
-        self.sparse_weight_vec = sparse_weight_vec
         
         # print('train_fn, dsnae : ', self.basis_vec.weight)
         # modules = []
@@ -69,7 +69,7 @@ class DSNBasisAE(BaseAE):
             self.private_encoder =  MLP(input_dim=input_dim,
                                     output_dim=latent_dim,
                                     hidden_dims=hidden_dims,
-                                    dop=self.dop).to(kwargs['device'])
+                                    dop=self.dop)
         else:
             self.private_encoder = geo_MLP(
                                 input_dim=input_dim,
@@ -77,7 +77,7 @@ class DSNBasisAE(BaseAE):
                                 hidden_dims=hidden_dims,
                                 dop=dop,
                                 num_geo_layer = num_geo_layer
-                            ).to(kwargs['device'])
+                            )
             
             
         self.softmax = nn.Softmax(dim = -1)

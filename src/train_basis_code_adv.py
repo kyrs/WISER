@@ -3,7 +3,7 @@ import torch.autograd as autograd
 from itertools import chain
 from src.dsn_basis_ae_final import DSNBasisAE
 from src.evaluation_utils import *
-from src.mlp import MLP,geo_MLP
+from src.mlp import MLP, geo_MLP
 from src.train_code_base import eval_basis_dsnae_epoch, basis_dsn_ae_train_step
 from collections import OrderedDict
 import numpy as np
@@ -111,35 +111,8 @@ def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, o
 
     return history
 
-def get_projected_val(shared_encoder, basis_vec, X, ccle_only, drug_dim, cosine_flag, **kwargs):
 
-    inv_temp = kwargs['inv_temp']
-
-    # defining args just for the sake of passing in as arg
-    shared_decoder = MLP(input_dim=2 * kwargs['latent_dim'],
-                         output_dim=kwargs['input_dim'],
-                         hidden_dims=kwargs['encoder_hidden_dims'][::-1],
-                         dop=kwargs['dop']).to(kwargs['device'])
-    
-    # *******************************************************
-    dsnae = DSNBasisAE(shared_encoder=shared_encoder,
-                    decoder=shared_decoder,
-                    basis_vec = basis_vec,
-                    input_dim=kwargs['input_dim'],
-                    latent_dim=kwargs['latent_dim'],
-                    testing_drug_len = kwargs['testing_drug_len'],
-                    hidden_dims=kwargs['encoder_hidden_dims'],
-                    inv_temp = kwargs['inv_temp'],
-                    dop=kwargs['dop'],
-                    cosine_flag = cosine_flag,
-                    cns_basis_label_loss = False, # not required
-                    psuedo_label_flag = False, # not required
-                    pseudo_conf_threshold = 0.7, # not required
-                    norm_flag=kwargs['norm_flag']).to(kwargs['device'])
-    
-    return dsnae.get_proj_val(X)
-
-def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_flag, **kwargs):
+def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_flag, graphLoader, **kwargs):
     """
 
     :param s_dataloaders:
@@ -169,7 +142,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
     basis_vec = torch.nn.Embedding(drug_dim, kwargs['latent_dim']).to(kwargs['device'])
 
     inv_temp = kwargs['inv_temp']
-
+    print(kwargs['device'])
     shared_decoder = MLP(input_dim=2 * kwargs['latent_dim'],
                          output_dim=kwargs['input_dim'],
                          hidden_dims=kwargs['encoder_hidden_dims'][::-1],
@@ -184,6 +157,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     hidden_dims=kwargs['encoder_hidden_dims'],
                     inv_temp = kwargs['inv_temp'],
                     dop=kwargs['dop'],
+                    num_geo_layer = kwargs['num_geo_layer'],
                     cosine_flag = cosine_flag,
                     cns_basis_label_loss = True, 
                     psuedo_label_flag = False,
@@ -205,6 +179,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     cosine_flag = cosine_flag,
                     cns_basis_label_loss = False,
                     psuedo_label_flag = True, 
+                    num_geo_layer = kwargs['num_geo_layer'],
                     pseudo_conf_threshold = 0.7,
                     norm_flag=kwargs['norm_flag'],
                     graphLoader = graphLoader
