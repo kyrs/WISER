@@ -30,7 +30,7 @@ def compute_gradient_penalty(critic, real_samples, fake_samples, device):
     return gradient_penalty
 
 
-def critic_dsn_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, history, scheduler=None,
+def critic_dsn_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, history, graphLoader, scheduler=None,
                           clip=None, gp=None):
     critic.zero_grad()
     s_dsnae.zero_grad()
@@ -39,12 +39,17 @@ def critic_dsn_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, op
     t_dsnae.eval()
     critic.train()
 
-    s_x = s_batch[0].to(device)
-    t_x = t_batch[0].to(device)
+    if graphLoader:
+       #NOTE : check the graph structure
+        s_x = s_batch.to(device)
+        t_x = t_batch.to(device)
+    else:
+        s_x = s_batch[0].to(device)
+        t_x = t_batch[0].to(device)
+        pass
 
     s_code = s_dsnae.encode(s_x)[0]
     t_code = t_dsnae.encode(t_x)[0]
-
     loss = torch.mean(critic(t_code)) - torch.mean(critic(s_code))
 
     if gp is not None:
@@ -71,7 +76,7 @@ def critic_dsn_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, op
     return history
 
 
-def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, alpha, history,
+def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, alpha, history, graphLoader,
                            scheduler=None):
     critic.zero_grad()
     s_dsnae.zero_grad()
@@ -80,12 +85,17 @@ def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, o
     s_dsnae.train()
     t_dsnae.train()
 
-    s_x = s_batch[0].to(device)
-    s_label = s_batch[1].to(device)
-
-    t_x = t_batch[0].to(device)
-    t_label = t_batch[1].to(device)
-
+    if not graphLoader:
+        s_x = s_batch[0].to(device)
+        s_label = s_batch[1].to(device)
+        t_x = t_batch[0].to(device)
+        t_label = t_batch[1].to(device)
+    else:
+        s_x = s_batch.to(device)
+        s_label = s_batch["label"].to(device)
+        t_x = t_batch.to(device)
+        t_label = t_batch["label"].to(device)
+        
     
     t_code = t_dsnae.encode(t_x)[0] ## 0 index is concatenated output in encodes
     # s_dsnae
@@ -271,6 +281,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                                                              optimizer=classifier_optimizer,
                                                              history=critic_train_history,
                                                              # clip=0.1,
+                                                             graphLoader=graphLoader,
                                                              gp=10.0)
                 if (step + 1) % 5 == 0:
                     gen_train_history = gan_dsn_gen_train_step(critic=confounding_classifier,
@@ -281,6 +292,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                                                                device=kwargs['device'],
                                                                optimizer=t_ae_optimizer,
                                                                alpha=1.0,
+                                                               graphLoader = graphLoader,
                                                                history=gen_train_history)
 
         torch.save(s_dsnae.state_dict(), os.path.join(kwargs['model_save_folder'], 'a_s_dsnae.pt'))

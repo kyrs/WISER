@@ -448,16 +448,18 @@ def tcga_graphDataLoaders(fet_tcga_data, label_tcga, drugFet, drug_gene_inter, g
     testGraphList  = []
     ## Hetro data based data structure
     for trainFet, trainLabel in zip(train_labeled_tcga_df, train_tcga_labels):
-        trainObj = HeteroData(gene={"x" : torch.tensor(trainFet).unsqueeze(1).type(torch.float), "num_nodes" :len(trainFet), "y" : trainLabel},
-                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)}, 
+        trainObj = HeteroData(gene={"x" : torch.tensor(trainFet).unsqueeze(1).type(torch.float), "num_nodes" :len(trainFet)},
+                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)},
+                     label =  torch.tensor(trainLabel).unsqueeze(0), 
                      drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
                      gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)})
         trainGraphList.append(trainObj)
     
     
     for testFet, testLabel in zip(test_labeled_tcga_df, test_tcga_labels):
-        testObj = HeteroData(gene={"x" : torch.tensor(testFet).unsqueeze(1).type(torch.float), "num_nodes" :len(testFet), "y":testLabel},
-                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)}, 
+        testObj = HeteroData(gene={"x" : torch.tensor(testFet).unsqueeze(1).type(torch.float), "num_nodes" :len(testFet)},
+                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)},
+                     label= torch.tensor(testLabel).unsqueeze(0), 
                      drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
                      gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)}) 
      
@@ -555,6 +557,7 @@ def ccle_graphDataLoaders(labeled_CCLE_data, drugFet, drug_gene_inter, gene_gene
     for trainFet, trainLabel in zip(train_labeled_ccle_df, train_ccle_labels):
         trainObj = HeteroData(gene={"x" : torch.tensor(trainFet).unsqueeze(1).type(torch.float), "num_nodes" :len(trainFet), "y" : trainLabel},
                      drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)}, 
+                     label = torch.tensor(trainLabel).unsqueeze(0),
                      drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
                      gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)})
         trainGraphList.append(trainObj)
@@ -562,7 +565,8 @@ def ccle_graphDataLoaders(labeled_CCLE_data, drugFet, drug_gene_inter, gene_gene
     
     for testFet, testLabel in zip(test_labeled_ccle_df, test_ccle_labels):
         testObj = HeteroData(gene={"x" : torch.tensor(testFet).unsqueeze(1).type(torch.float), "num_nodes" :len(testFet), "y":testLabel},
-                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)}, 
+                     drug={"x":torch.tensor(drugFet).type(torch.float), "num_nodes" :len(drugFet)},
+                     label = torch.tensor(testLabel).unsqueeze(0), 
                      drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
                      gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)}) 
      

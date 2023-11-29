@@ -5,7 +5,7 @@ from src.base_ae import BaseAE
 from src.mlp import MLP, geo_MLP
 from src.types_ import *
 from typing import List
-
+from torch_geometric.utils import unbatch
 class DSNBasisAE(BaseAE):
     def __init__(self, shared_encoder, decoder, basis_vec,  num_geo_layer, input_dim: int, latent_dim: int, testing_drug_len : int, inv_temp : int = 1, pseudo_conf_threshold = 0.9, alpha: float = 1.0, beta : float = 1.0, gamma : float = 1.0, eta : float = 1.0,
                  basis_weight = torch.ones(1), graphLoader=False,  psuedo_label_flag = False, psuedo_label_update_cnt = 50,  hidden_dims: List = None, dop: float = 0.1, noise_flag: bool = False, norm_flag: bool = False, cns_basis_label_loss : bool = True, cosine_flag: bool = False,
@@ -82,34 +82,34 @@ class DSNBasisAE(BaseAE):
             
         self.softmax = nn.Softmax(dim = -1)
 
-    def p_encode(self, input) -> Tensor:
+    def p_encode(self, fetInput) -> Tensor:
         if self.noise_flag and self.training:
             if not self.graphLoader:
-                latent_code = self.private_encoder(input + torch.randn_like(input, requires_grad=False) * 0.1)
+                latent_code = self.private_encoder(fetInput + torch.randn_like(fetInput, requires_grad=False) * 0.1)
             else:
-                input["gene"] = input["gene"] + torch.randn_like(input["gene"], requires_grad=False) * 0.1
-                latent_code = self.private_encoder(input)
+                fetInput["gene"] = fetInput["gene"] + torch.randn_like(fetInput["gene"], requires_grad=False) * 0.1
+                latent_code = self.private_encoder(fetInput)
         else:
-            latent_code = self.private_encoder(input)
+            latent_code = self.private_encoder(fetInput)
 
         if self.norm_flag:
             return F.normalize(latent_code, p=2, dim=1)
         else:
             return latent_code
 
-    def s_encode(self, Tensor) -> Tensor:
+    def s_encode(self, fetInput) -> Tensor:
         if self.noise_flag and self.training:
-            latent_code = self.shared_encoder(input + torch.randn_like(input, requires_grad=False) * 0.1)
+            latent_code = self.shared_encoder(fetInput + torch.randn_like(fetInput, requires_grad=False) * 0.1)
         else:
-            latent_code = self.shared_encoder(input)
+            latent_code = self.shared_encoder(fetInput)
         if self.norm_flag:
             return F.normalize(latent_code, p=2, dim=1)
         else:
             return latent_code
 
-    def get_proj_val(self,  Tensor) -> Tensor:
-        p_latent_code = self.p_encode(input)
-        s_latent_code = self.s_encode(input)
+    def get_proj_val(self, fetInput) -> Tensor:
+        p_latent_code = self.p_encode(fetInput)
+        s_latent_code = self.s_encode(fetInput)
         
         weighted_basis = self.basis_vec.weight 
        
@@ -124,9 +124,9 @@ class DSNBasisAE(BaseAE):
 
         return s_project_code, s_projected_val
 
-    def encode(self, input: Tensor) -> Tensor:
-        p_latent_code = self.p_encode(input)
-        s_latent_code = self.s_encode(input)
+    def encode(self, fetInput) -> Tensor:
+        p_latent_code = self.p_encode(fetInput)
+        s_latent_code = self.s_encode(fetInput)
         
         weighted_basis = self.basis_vec.weight 
 
@@ -148,17 +148,17 @@ class DSNBasisAE(BaseAE):
         return torch.cat((p_latent_code, final_code), dim=1), final_code, s_latent_code, psuedo_labels 
     
     
-    def decode(self, z: Tensor) -> Tensor:
+    def decode(self, z) -> Tensor:
         outputs = self.decoder(z)
         return outputs
     
-    def forward(self, input: Tensor, **kwargs) -> List[Tensor]:
-        z_concat, final_code, s_latent_code, psuedo_labels = self.encode(input)
-        return [input, self.decode(z_concat), final_code, s_latent_code, z_concat, psuedo_labels]
+    def forward(self, fetInput, **kwargs) -> List[Tensor]:
+        z_concat, final_code, s_latent_code, psuedo_labels = self.encode(fetInput)
+        return [fetInput, self.decode(z_concat), final_code, s_latent_code, z_concat, psuedo_labels]
     
     def loss_function(self, batch, target) -> dict:
         output = self.forward(batch)
-        input = output[0]
+        fetInput = output[0]
         recons = output[1]
         final_code = output[2]
         s_latent_code = output[3]
@@ -175,7 +175,7 @@ class DSNBasisAE(BaseAE):
         norm_s_latent_code = torch.norm(s_latent_code.detach(), p = 2, dim = 1).detach()
         norm_s_latent_code = norm_s_latent_code.unsqueeze(1)
         norm_s_latent_code = s_latent_code.div(norm_s_latent_code.expand_as(s_latent_code) + 1e-6)
-        print(norm_s_latent_code.shape, norm_basis_vec.shape, target.shape)
+        
         
         
         
@@ -197,9 +197,13 @@ class DSNBasisAE(BaseAE):
         p_z = z_concat[:, :z_concat.shape[1] // 2]
         s_z = z_concat[:, z_concat.shape[1] // 2:]
         #NOTE : check the dimension of the  Z_concat shape    
-
-        recons_loss = F.mse_loss(input, recons)
-        # print(recons_loss)
+        if self.graphLoader:
+            out = unbatch(fetInput["gene"]["x"],fetInput["gene"].batch)
+            out = torch.cat(out, dim =-1)
+            recons_loss = F.mse_loss(out.T, recons)
+        else:
+            recons_loss = F.mse_loss(fetInput, recons)
+        
         
 
         s_l2_norm = torch.norm(s_z, p=2, dim=1, keepdim=True).detach()
@@ -219,14 +223,13 @@ class DSNBasisAE(BaseAE):
 
         # print(f'recons_loss : {recons_loss} ortho_loss : {ortho_loss} commit : {loss_commit} loss_commit_reverse : {loss_commit_reverse} loss_basis_label : {basis_label_loss}')
         if(torch.isnan(recons_loss)):
-            print(f'weighted_basis {weighted_basis}')
             print(f'basis_vec {self.basis_vec.weight}')
             assert(False)
         
-        print(f'alpha : {self.alpha} beta : {self.beta} gamma : {self.gamma} eta : {self.eta}')
+        # print(f'alpha : {self.alpha} beta : {self.beta} gamma : {self.gamma} eta : {self.eta}')
         if(self.cns_basis_label_loss or self.psuedo_label_flag):
             loss = recons_loss + self.alpha * ortho_loss + self.beta * loss_commit + self.gamma * loss_commit_reverse + self.eta * basis_label_loss
-            print(f'recons_loss : {recons_loss} ortho_loss : {ortho_loss} commit : {loss_commit} loss_commit_reverse : {loss_commit_reverse} loss_basis_label : {basis_label_loss}')
+            print(f'recons_loss : {recons_loss} ortho_loss : {ortho_loss} commit : {loss_commit} loss_commit_reverse : {loss_commit_reverse} loss_basis_label : {basis_label_loss} cns_basis : {self.cns_basis_label_loss} pseudo label : {self.psuedo_label_flag}')
             return {'loss': loss, 'recons_loss': recons_loss, 'ortho_loss': ortho_loss, "commit" : loss_commit, "loss_commit_reverse": loss_commit_reverse, "loss_basis_label" : basis_label_loss}
         else:
             loss = recons_loss + self.alpha * ortho_loss + self.beta * loss_commit + self.gamma * loss_commit_reverse

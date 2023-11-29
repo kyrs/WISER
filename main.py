@@ -236,26 +236,32 @@ if __name__ == '__main__':
     parser.set_defaults(hpt_flag=False)
     args = parser.parse_args()
     
-    params_grid = {
-    "pretrain_num_epochs": [50, 100, 300, 500, 800, 1000],
-    "train_num_epochs": [0, 1000, 1500, 2000, 2500, 3000],
-    "dop": [0.0, 0.1],
-    "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
-    }
+    # params_grid = {
+    # "pretrain_num_epochs": [50, 100, 300, 500, 800, 1000],
+    # "train_num_epochs": [0, 1000, 1500, 2000, 2500, 3000],
+    # "dop": [0.0, 0.1],
+    # "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
+    # }
 
+    params_grid = {
+    "pretrain_num_epochs": [5],
+    "train_num_epochs": [2],
+    "dop": [0.1],
+    "inv_temp": [1]
+    }
     if args.method not in ['code_adv', 'adsn', 'adae', 'dsnw']:
         params_grid.pop('pretrain_num_epochs')
 
     # # ************* FOR DOING RANDOMIZED GRIDSEARCH WITH DIFFERENT TEMPERATURE *******************
-    keys, values = zip(*params_grid.items())
-    update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
-    update_params_dict_list = random.sample(update_params_dict_list, 3*80) # to be removed later on (defaultl 80)
-    # # ***********************************************************************************
-
-    # # ************* FOR DOING GRIDSEARCH KEEPING TEMPERATURE CONSTANT!*******************
     # keys, values = zip(*params_grid.items())
     # update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
-    # # ***********************************************************************************
+    # update_params_dict_list = random.sample(update_params_dict_list, 3*80) # to be removed later on (defaultl 80)
+    # # # ***********************************************************************************
+
+    # # ************* FOR DOING GRIDSEARCH KEEPING TEMPERATURE CONSTANT!*******************
+    keys, values = zip(*params_grid.items())
+    update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    # ***********************************************************************************
 
 
     # CHANGE FOLDER_NAME

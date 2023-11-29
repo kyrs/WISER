@@ -4,6 +4,7 @@ from typing import List
 from src.gradient_reversal import RevGrad
 import torch 
 from torch_geometric.nn import HeteroConv, GCNConv, SAGEConv, GATConv
+from torch_geometric.utils import unbatch
 
 class MLP(nn.Module):
 
@@ -112,17 +113,20 @@ class geo_MLP(nn.Module):
 
 
 
-    def forward(self, input) :
-        print(input)
-        fet_dict  = input.x_dict
-        edge_dict = input.edge_index_dict
-        batch_idx = input["gene"] 
+    def forward(self, fetInput) :
+        fet_dict  = fetInput.x_dict
+        edge_dict = fetInput.edge_index_dict
+        batch_idx = fetInput["gene"].batch 
         for conv in self.convs:
             fet = conv(fet_dict, edge_dict)
-            print(fet) ## NOTE : check if y is also getting modified
+            ## NOTE : check if y is also getting modified
             fet = {key: x.relu() for key, x in fet.items()}
         
-        outGraph = fet['gene'].T
-        embed = self.module(outGraph)
+
+
+        outGraph = fet['gene']
+        x = unbatch(outGraph, batch_idx)
+        out = torch.cat(x, dim =-1)
+        embed = self.module(out.T)
         output = self.output_layer(embed)
         return output
