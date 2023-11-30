@@ -9,7 +9,7 @@ from collections import defaultdict
 import itertools
 import numpy as np
 
-import data
+from src.data import get_labeled_dataloader_generator
 from config import data_config, param_config
 from src import train_basis_code_adv
 from src import basis_dataloader
@@ -150,7 +150,7 @@ def main(args, update_params_dict):
         safe_make_dir(task_save_folder)
 
         ft_evaluation_metrics = defaultdict(list)
-        labeled_dataloader_generator = data.get_labeled_dataloader_generator(
+        labeled_dataloader_generator = get_labeled_dataloader_generator(
             gex_features_df=gex_features_df,
             seed=seed,
             batch_size=training_params['labeled']['batch_size'],
@@ -177,9 +177,10 @@ def main(args, update_params_dict):
                 train_dataloader=train_labeled_ccle_dataloader,
                 val_dataloader=test_labeled_ccle_dataloader,
                 test_dataloader=labeled_tcga_dataloader,
-                seed=fold_count, ## CHECK
+                seed=fold_count, ## NOTE: CHECK
                 normalize_flag=args.norm_flag,
                 metric_name=args.metric,
+                graphLoader=graphLoader, 
                 task_save_folder=task_save_folder,
                 **wrap_training_params(training_params, type='labeled')
             )

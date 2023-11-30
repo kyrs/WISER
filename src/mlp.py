@@ -87,7 +87,7 @@ class geo_MLP(nn.Module):
                     ('gene', 'inter', 'gene'): SAGEConv(-1, 1),
                 }, aggr='sum')
                 self.convs.append(conv)
-
+                ## NOTE : check working of conv 
 
             for i in range(len(hidden_dims) - 1):
                 modules.append(

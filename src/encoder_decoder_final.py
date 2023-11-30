@@ -16,13 +16,14 @@ class EncoderDecoder_basis(nn.Module):
         self.inv_temp = inv_temp
         self.testing_drug_len = testing_drug_len
         self.cosine_flag = cosine_flag
-    def forward(self, input: Tensor) -> Tensor:
+    def forward(self, inputFet) -> Tensor:
         
         if self.normalize_flag:
-            encoded_input = self.encoder(input)
+            ## NOTE : check norm flag
+            encoded_input = self.encoder(inputFet)
             encoded_input =  nn.functional.normalize(encoded_input, p=2, dim=1)
         else:
-            encoded_input = self.encoder(input)
+            encoded_input = self.encoder(inputFet)
 
         weighted_basis = self.basis_vec.weight 
 

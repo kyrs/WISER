@@ -11,11 +11,12 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 from torch.utils.data import TensorDataset, DataLoader
 
 from config import data_config,param_config
-from data_preprocessing import align_feature
+from src.data_preprocessing import align_feature
 
 from torch_geometric.data import HeteroData
 from torch_geometric.loader import DataLoader as geo_dataLoader
 import json 
+from torch_geometric.utils import unbatch
 
 def load_json(fileName):
     ## load relational data 
@@ -89,12 +90,13 @@ def graphMetaData(npFeature, npLabel, gene_gene_inter, drug_gene_inter, drug_fet
     graphList = []
     assert(npFeature.shape[0] == npLabel.shape[0])
     for fet, label in zip(npFeature, npLabel):
-        trainObj = HeteroData(gene={"x" : torch.tensor(fet).unsqueeze(1).type(torch.float), "num_nodes" :len(npFeature), "y" : label},
+        trainObj = HeteroData(gene={"x" : torch.tensor(fet).unsqueeze(1).type(torch.float), "num_nodes" :len(fet)},
                      drug={"x":torch.tensor(drug_fet).type(torch.float), "num_nodes" :len(drug_fet)}, 
+                     label=torch.tensor(label).unsqueeze(0),
                      drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
                      gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)})
         graphList.append(trainObj)
-    pass
+    return graphList
 
 
 def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_threshold=None, tcga_cancer_type=None, graphLoader=True):
@@ -124,7 +126,7 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
     assert (all(labeled_df.index == labeled_tcga_gex_feature_df.index))
 
     # ********** added data for RECIST score **************************
-    recist_data = pd.read_csv('../data/tcga/tcga_drug_first_response_type.csv')
+    recist_data = pd.read_csv(data_config.tcga_drug_first_response_file)
     recist_data = recist_data.set_index('bcr_patient_barcode')
     # removing overlapping indices between relapse time and recist score dfs
     # recist_bcr = (recist_data.index.intersection(tcga_gex_feature_df.index.intersection(tcga_treatment_df.index))).difference(tcga_response_df.index.intersection(tcga_gex_feature_df.index.intersection(tcga_treatment_df.index)))
@@ -181,11 +183,13 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
     else:
         listGeneRel = load_json(data_config.gene_gene_relation)
         listDrugRel = load_json(data_config.drug_gene_relation)
+        fetColList = gex_features_df.columns 
+        # print(fetColList)
         gene_gene_inter = undirected_gene_coord_mat(listGeneDict = listGeneRel, fetColList = fetColList)
         drugFet, drug_gene_inter, drug_list_unsup = directed_drug_fet_coord_mat(listDrugDict = listDrugRel, fetColList = fetColList)
-        assert((gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
-        graph_node_list = graphMetaData(npFeature =labeled_tcga_gex_feature_df.values.astype('float32') , npLabel = drug_label, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drug_fet , colFet=gex_features_df.columns)
-        labeled_tcga_dataloader = geo_dataLoader(graph_node_list,batch_size=batch_size)
+        assert(len(gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
+        graph_node_list = graphMetaData(npFeature =labeled_tcga_gex_feature_df.values.astype('float32') , npLabel = drug_label, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
+        labeled_tcga_dataloader = geo_dataLoader(graph_node_list, batch_size=batch_size)
     return labeled_tcga_dataloader
 
 def get_tcga_preprocessed_labeled_dataloaders(gex_features_df, drug, batch_size):
@@ -381,6 +385,8 @@ def get_ccle_labeled_dataloader_generator(gex_features_df, drug, batch_size, see
     s_kfold = StratifiedKFold(n_splits=5, random_state=seed, shuffle=True)
     
     if graphLoader:
+        fetColList = gex_features_df.columns
+        # print(fetColList)
         listGeneRel = load_json(data_config.gene_gene_relation)
         listDrugRel = load_json(data_config.drug_gene_relation)
         gene_gene_inter = undirected_gene_coord_mat(listGeneDict = listGeneRel, fetColList = fetColList)
@@ -411,14 +417,15 @@ def get_ccle_labeled_dataloader_generator(gex_features_df, drug, batch_size, see
                                                   shuffle=True)
         else:
             
-            assert((gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
-            train_node_list = graphMetaData(npFeature = train_labeled_ccle_df.astype('float32') , npLabel = train_ccle_labels, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drug_fet , colFet=gex_features_df.columns)
+            assert(len(gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
+            train_node_list = graphMetaData(npFeature = train_labeled_ccle_df.astype('float32') , npLabel = train_ccle_labels, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
+            # print(train_node_list)
             train_labeled_ccle_dataloader = geo_dataLoader(train_node_list,batch_size=batch_size)
 
             ### test data loader 
-            test_node_list = graphMetaData(npFeature = test_labeled_ccle_df.astype('float32') , npLabel = test_ccle_labels, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drug_fet , colFet=gex_features_df.columns)
+            test_node_list = graphMetaData(npFeature = test_labeled_ccle_df.astype('float32') , npLabel = test_ccle_labels, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
             test_labeled_ccle_dataloader = geo_dataLoader(test_node_list, batch_size=batch_size)
-
+            
             ## NOTE : double verify the ordering of train and test data
         yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader
 
@@ -666,7 +673,7 @@ def get_labeled_tissue_dataloader_generator(gex_features_df, drug, seed, batch_s
                                                                     days_threshold=days_threshold)
 
     for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, tissue_dataloader_dict in ccle_labeled_dataloader_generator:
-        yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, test_labeled_dataloaders, tissue_dataloader_dict
+        return train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, test_labeled_dataloaders, tissue_dataloader_dict
 
 
 def get_adae_unlabeled_dataloaders(gex_features_df, batch_size, pos_gender='female'):
@@ -767,3 +774,27 @@ def get_adae_labeled_dataloaders(gex_features_df, seed, batch_size, pos_gender='
 
     return (train_labeled_dataloader, val_labeled_dataloader,
             test_labeled_dataloader) if ft_flag else (train_labeled_dataloader, test_labeled_dataloader)
+
+if __name__ == "__main__":
+    # print("Hello world !!")
+    gex_features_df = pd.read_csv(data_config.gex_feature_file, index_col=0)
+    labeled_dataloader_generator = get_labeled_dataloader_generator(
+            gex_features_df=gex_features_df,
+            seed=2023,
+            batch_size=32,
+            drug="fu",
+            ccle_measurement="AUC",
+            threshold=None,
+            days_threshold=None,
+            pdtc_flag=False,
+            n_splits=5,
+            graphLoader=True)
+    
+    for out in labeled_dataloader_generator:
+        print(out)
+        for batch in out[2]:
+            print(batch)
+            print(batch["gene"].batch)
+            print(len(batch["gene"]["x"]), len(batch["gene"].batch), len(batch["label"]))
+            print(unbatch(batch["gene"]["x"], batch["gene"].batch))
+        # print(out)

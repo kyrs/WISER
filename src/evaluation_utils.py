@@ -47,12 +47,20 @@ def eval_ae_epoch(model, data_loader, device, history):
     return history
 
 
-def evaluate_target_classification_epoch(classifier, dataloader, device, history):
+def evaluate_target_classification_epoch(classifier, dataloader, device, history, graphLoader):
     y_truths = np.array([])
     y_preds = np.array([])
     classifier.eval()
 
-    for x_batch, y_batch in dataloader:
+    for batch in dataloader:
+        if not graphLoader:
+            x_batch = batch[0]
+            y_batch = batch[1]
+        else:
+            ## NOTE : vrify batch size
+            x_batch = batch 
+            y_batch = batch["label"]
+        
         x_batch = x_batch.to(device)
         y_batch = y_batch.to(device)
         with torch.no_grad():

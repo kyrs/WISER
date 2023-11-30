@@ -234,6 +234,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                                                         t_dsnae=t_dsnae,
                                                         s_batch=s_batch,
                                                         t_batch=t_batch,
+                                                        graphLoader = graphLoader,
                                                         device=kwargs['device'],
                                                         optimizer=ae_optimizer,
                                                         history=dsnae_train_history)
@@ -241,10 +242,12 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
             dsnae_val_history = eval_basis_dsnae_epoch(model=s_dsnae,
                                                  data_loader=s_test_dataloader,
                                                  device=kwargs['device'],
+                                                 graphLoader = graphLoader,
                                                  history=dsnae_val_history
                                                  )
             dsnae_val_history = eval_basis_dsnae_epoch(model=t_dsnae,
                                                  data_loader=t_test_dataloader,
+                                                 graphLoader = graphLoader,
                                                  device=kwargs['device'],
                                                  history=dsnae_val_history
                                                  )
