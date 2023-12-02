@@ -3,7 +3,7 @@ from src.types_ import *
 from typing import List
 from src.gradient_reversal import RevGrad
 import torch 
-from torch_geometric.nn import HeteroConv, GCNConv, SAGEConv, GATConv
+from torch_geometric.nn import HeteroConv, GCNConv, SAGEConv, GATConv, GraphConv
 from torch_geometric.utils import unbatch
 
 class MLP(nn.Module):
@@ -83,8 +83,8 @@ class geo_MLP(nn.Module):
             self.convs = torch.nn.ModuleList()
             for _ in range(num_geo_layer):
                 conv = HeteroConv({
-                    ('drug', 'inter', 'gene'): SAGEConv(-1, 1),
-                    ('gene', 'inter', 'gene'): SAGEConv(-1, 1),
+                    ('drug', 'inter', 'gene'): GATConv((-1, -1), 1, add_self_loops=False),
+                    ('gene', 'inter', 'gene'): GATConv((-1, -1), 1),
                 }, aggr='sum')
                 self.convs.append(conv)
                 ## NOTE : check working of conv 
@@ -118,13 +118,14 @@ class geo_MLP(nn.Module):
         edge_dict = fetInput.edge_index_dict
         batch_idx = fetInput["gene"].batch 
         for conv in self.convs:
-            fet = conv(fet_dict, edge_dict)
+            fet_dict = conv(fet_dict, edge_dict)
+            # print(fet_dict)
             ## NOTE : check if y is also getting modified
-            fet = {key: x.relu() for key, x in fet.items()}
+            fet_dict = {key: x.relu() for key, x in fet_dict.items()}
         
 
 
-        outGraph = fet['gene']
+        outGraph = fet_dict['gene']
         x = unbatch(outGraph, batch_idx)
         out = torch.cat(x, dim =-1)
         embed = self.module(out.T)

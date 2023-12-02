@@ -465,8 +465,8 @@ def tcga_graphDataLoaders(fet_tcga_data, label_tcga, drugFet, drug_gene_inter, g
      
         testGraphList.append(testObj)
     print(len(trainGraphList), len(testGraphList))
-    train_labeled_TCGA_dataloader = geo_dataLoader(trainGraphList, batch_size = batch_size, drop_last = True)
-    test_labeled_TCGA_dataloader = geo_dataLoader(testGraphList, batch_size = batch_size, drop_last = True)
+    train_labeled_TCGA_dataloader = geo_dataLoader(trainGraphList, batch_size = batch_size, shuffle =True, drop_last = True, pin_memory=False)
+    test_labeled_TCGA_dataloader = geo_dataLoader(testGraphList, batch_size = batch_size, shuffle =True, drop_last = True, pin_memory=False)
 
     return train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader
     
@@ -573,8 +573,8 @@ def ccle_graphDataLoaders(labeled_CCLE_data, drugFet, drug_gene_inter, gene_gene
         testGraphList.append(testObj)
     
     print(len(trainGraphList), len(testGraphList))
-    train_labeled_CCLE_dataloader = geo_dataLoader(trainGraphList, batch_size = batch_size, drop_last = True)
-    test_labeled_CCLE_dataloader = geo_dataLoader(testGraphList, batch_size = batch_size, drop_last = True)
+    train_labeled_CCLE_dataloader = geo_dataLoader(trainGraphList, batch_size = batch_size,shuffle =True, drop_last = True, pin_memory=False)
+    test_labeled_CCLE_dataloader = geo_dataLoader(testGraphList, batch_size = batch_size, shuffle =True,drop_last = True, pin_memory=False)
 
     return train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader
 

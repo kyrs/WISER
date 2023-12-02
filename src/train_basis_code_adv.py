@@ -1,6 +1,9 @@
 import os
 import torch.autograd as autograd
 from itertools import chain
+import sys
+sys.path.append("../")
+from config import param_config
 from src.dsn_basis_ae_final import DSNBasisAE
 from src.evaluation_utils import *
 from src.mlp import MLP, geo_MLP
@@ -152,7 +155,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
     basis_vec = torch.nn.Embedding(drug_dim, kwargs['latent_dim']).to(kwargs['device'])
 
     inv_temp = kwargs['inv_temp']
-    print(kwargs['device'])
+    # print(kwargs['device'])
     shared_decoder = MLP(input_dim=2 * kwargs['latent_dim'],
                          output_dim=kwargs['input_dim'],
                          hidden_dims=kwargs['encoder_hidden_dims'][::-1],
@@ -188,7 +191,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     dop=kwargs['dop'],
                     cosine_flag = cosine_flag,
                     cns_basis_label_loss = False,
-                    psuedo_label_flag = True, 
+                    psuedo_label_flag = param_config.pseudo_loss_flag, 
                     num_geo_layer = kwargs['num_geo_layer'],
                     pseudo_conf_threshold = 0.7,
                     norm_flag=kwargs['norm_flag'],

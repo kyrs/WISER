@@ -245,8 +245,8 @@ if __name__ == '__main__':
     # }
 
     params_grid = {
-    "pretrain_num_epochs": [5],
-    "train_num_epochs": [2],
+    "pretrain_num_epochs": [300],
+    "train_num_epochs": [3000],
     "dop": [0.1],
     "inv_temp": [1]
     }

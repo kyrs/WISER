@@ -189,7 +189,7 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
         drugFet, drug_gene_inter, drug_list_unsup = directed_drug_fet_coord_mat(listDrugDict = listDrugRel, fetColList = fetColList)
         assert(len(gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
         graph_node_list = graphMetaData(npFeature =labeled_tcga_gex_feature_df.values.astype('float32') , npLabel = drug_label, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
-        labeled_tcga_dataloader = geo_dataLoader(graph_node_list, batch_size=batch_size)
+        labeled_tcga_dataloader = geo_dataLoader(graph_node_list, batch_size=batch_size, shuffle=True)
     return labeled_tcga_dataloader
 
 def get_tcga_preprocessed_labeled_dataloaders(gex_features_df, drug, batch_size):
@@ -420,11 +420,11 @@ def get_ccle_labeled_dataloader_generator(gex_features_df, drug, batch_size, see
             assert(len(gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
             train_node_list = graphMetaData(npFeature = train_labeled_ccle_df.astype('float32') , npLabel = train_ccle_labels, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
             # print(train_node_list)
-            train_labeled_ccle_dataloader = geo_dataLoader(train_node_list,batch_size=batch_size)
+            train_labeled_ccle_dataloader = geo_dataLoader(train_node_list,batch_size=batch_size, shuffle=True)
 
             ### test data loader 
             test_node_list = graphMetaData(npFeature = test_labeled_ccle_df.astype('float32') , npLabel = test_ccle_labels, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
-            test_labeled_ccle_dataloader = geo_dataLoader(test_node_list, batch_size=batch_size)
+            test_labeled_ccle_dataloader = geo_dataLoader(test_node_list, batch_size=batch_size, shuffle=True)
             
             ## NOTE : double verify the ordering of train and test data
         yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader

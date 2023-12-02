@@ -182,11 +182,17 @@ class DSNBasisAE(BaseAE):
         assert (self.psuedo_label_flag != self.cns_basis_label_loss) or ((self.psuedo_label_flag == False) and (self.cns_basis_label_loss == False))
 
         if self.cns_basis_label_loss:
-            basis_label_loss = (target == 1) * torch.square(torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T) - 1)
-            basis_label_loss = torch.sum(basis_label_loss, 1).mean(0) 
-
+            pos_cosine_dis = (target==1) * (1-torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T))
+            neg_cosine_dis = (target==0) * (1-torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T))
+            posCos = pos_cosine_dis.sum() / ((target==1).sum())
+            negCos = neg_cosine_dis.mean() /  ((target==0).sum())
+            # print(posCos, negCos)
+            basis_label_loss = torch.max( posCos-negCos+0.2, torch.tensor(0))
+            # basis_label_loss = (target == 1) * torch.square(torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T) - 1)
+            # basis_label_loss = torch.sum(basis_label_loss, 1).mean(0) 
+            # print (basis_label_loss)
         if self.psuedo_label_flag:
-            # print(psuedo_labels)
+            # basis_label_loss = 0
             basis_label_loss = (psuedo_labels == 1) * torch.square(torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T) - 1)
             basis_label_loss = torch.sum(basis_label_loss, 1).mean(0)
 
