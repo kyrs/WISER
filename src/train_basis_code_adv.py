@@ -102,7 +102,7 @@ def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, o
     
     t_code = t_dsnae.encode(t_x)[0] ## 0 index is concatenated output in encodes
     # s_dsnae
-
+    print("Generator")
     optimizer.zero_grad()
     gen_loss = -torch.mean(critic(t_code))
     s_loss_dict = s_dsnae.loss_function(s_x, s_label)
@@ -289,7 +289,8 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                                                              # clip=0.1,
                                                              graphLoader=graphLoader,
                                                              gp=10.0)
-                if (step + 1) % 5 == 0:
+                print(step)
+                if (step + 1) % 2 == 0:
                     gen_train_history = gan_dsn_gen_train_step(critic=confounding_classifier,
                                                                s_dsnae=s_dsnae,
                                                                t_dsnae=t_dsnae,

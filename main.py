@@ -77,7 +77,6 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)
 
 def main(args, update_params_dict):
-    ############ param config###############
     device = param_config.device
     cosine_flag = param_config.cosine_flag
     ccle_only = param_config.ccle_only   
@@ -109,7 +108,7 @@ def main(args, update_params_dict):
         {
             'device': device,
             'input_dim': gex_features_df.shape[-1],
-            'model_save_folder': os.path.join(method_save_folder),
+            'model_save_folder': os.path.join(method_save_folder, param_str),
             'es_flag': False,
             'retrain_flag': args.retrain_flag,
             'norm_flag': args.norm_flag,
@@ -245,10 +244,10 @@ if __name__ == '__main__':
     # }
 
     params_grid = {
-    "pretrain_num_epochs": [300],
-    "train_num_epochs": [3000],
-    "dop": [0.1],
-    "inv_temp": [1]
+    "pretrain_num_epochs": [50, 100, 300],
+    "train_num_epochs": [1000, 2000, 2500],
+    "dop": [0.1, 0.0],
+    "inv_temp": [0.001, 10, 2, 2.5, 100, 1]
     }
     if args.method not in ['code_adv', 'adsn', 'adae', 'dsnw']:
         params_grid.pop('pretrain_num_epochs')
