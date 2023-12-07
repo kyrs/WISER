@@ -129,7 +129,7 @@ def prepare_CCLE_files():
 
 def fetchCCLE_datafordrug(CCLE_Files, drug, diagnosis = False, threshold = None):    
 
-    
+    #NOTE : change the value of threshold 
     drug = drug.lower()
     
     gdsc1_sensitivity_df = CCLE_Files['gdsc1_sensitivity_df']
@@ -485,7 +485,7 @@ def get_dataloaders_for_alignment(drug_list, batch_size, ccle_only, seed, graphL
     if not graphLoader:
         train_labeled_CCLE_dataloader, test_labeled_CCLE_dataloader = CCLE_DataLoaders(labeled_CCLE_data,  batch_size, seed)
         fet_TCGA_data, label_TCGA_data = get_unsupervised_data_TCGA(drug_list, gex_features_df) # >>> used when using just unsupervised TCGA data = gene expression of ~9k samples
-        print(f" TCGA sample size is around :  {len(labeled_TCGA_data)}") 
+        # print(f" TCGA sample size is around :  {len(labeled_TCGA_data)}") 
         train_labeled_TCGA_dataloader, test_labeled_TCGA_dataloader = TCGA_DataLoaders(fet_TCGA_data, label_TCGA_data, batch_size, seed)
 
     
@@ -537,7 +537,7 @@ def CCLE_DataLoaders(labeled_CCLE_data, batch_size, seed):
         test_labeled_ccle_dataset,
         batch_size=batch_size,
         shuffle=True,
-        drop_last = True)
+        drop_last = False)
     
 
     return train_labeled_ccle_dataloader, test_labeled_ccle_dataloader

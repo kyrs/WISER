@@ -48,7 +48,6 @@ def basis_dsn_ae_train_step(s_dsnae, t_dsnae, s_batch, t_batch, device, optimize
     s_dsnae.train()
     t_dsnae.train()
 
-    graphLoader = True ## NOTE: need to change
     if not graphLoader:
         s_x = s_batch[0].to(device)
         t_x = t_batch[0].to(device)

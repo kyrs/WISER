@@ -157,7 +157,6 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
     assert (all(recist_labeled_df.index == recist_labeled_tcga_gex_feature_df.index))
     # ****************************************************************
 
-    days_threshold = None
     if days_threshold is None:
         days_threshold = np.median(labeled_df.days_to_new_tumor_event_after_initial_treatment)
 
@@ -504,23 +503,25 @@ def get_labeled_dataloader_generator(gex_features_df, drug, seed, batch_size, cc
                                                                               batch_size=batch_size,
                                                                               threshold=threshold,
                                                                               measurement=ccle_measurement,
-                                                                              n_splits=n_splits)
+                                                                              n_splits=n_splits,
+                                                                              graphLoader=graphLoader)
 
     if pdtc_flag:
         test_labeled_dataloaders = get_pdtc_labeled_dataloaders(drug=drug_name,
                                                                 batch_size=batch_size,
                                                                 threshold=threshold,
-                                                                measurement=ccle_measurement)
+                                                                measurement=ccle_measurement,
+                                                                graphLoader=graphLoader)
     else:
         if drug in ['tgem', 'tfu']:
             test_labeled_dataloaders = get_tcga_preprocessed_labeled_dataloaders(gex_features_df=gex_features_df,
                                                                                  drug=drug[1:],
-                                                                                 batch_size=batch_size)
+                                                                                 batch_size=batch_size, graphLoader=graphLoader)
         else:
             test_labeled_dataloaders = get_tcga_labeled_dataloaders(gex_features_df=gex_features_df,
                                                                     drug=drug_name,
                                                                     batch_size=batch_size,
-                                                                    days_threshold=days_threshold)
+                                                                    days_threshold=days_threshold, graphLoader=graphLoader)
 
     for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader in ccle_labeled_dataloader_generator:
         yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, test_labeled_dataloaders
