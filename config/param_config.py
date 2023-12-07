@@ -4,6 +4,7 @@ results_data = {"TCGA" : -1, "CCLE" : -2}
 graphLoader = False
 cosine_flag = True
 ccle_only = False 
+a_thres = 0.0
 pseudo_loss_flag = False
 seed = 2020
 folder_name = "logs/exp2_mlp"

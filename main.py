@@ -202,14 +202,14 @@ def main(args, update_params_dict):
 if __name__ == '__main__':
     set_seed(param_config.seed)
     basis_drug_list = param_config.basis_drug_list
-
+    print(param_config.a_thres)
     parser = argparse.ArgumentParser('ADSN training and evaluation')
     parser.add_argument('--method', dest='method', nargs='?', default='code_adv',
                         choices=['code_adv', 'dsn', 'dsna','code_base', 'code_mmd', 'adae', 'coral', 'dae', 'vae', 'ae'])
     parser.add_argument('--metric', dest='metric', nargs='?', default='auroc', choices=['auroc', 'auprc'])
 
     parser.add_argument('--measurement', dest='measurement', nargs='?', default='AUC', choices=['AUC', 'LN_IC50'])
-    parser.add_argument('--a_thres', dest='a_thres', nargs='?', type=float, default=None)
+    parser.add_argument('--a_thres', dest='a_thres', nargs='?', type=float, default=param_config.a_thres)
     parser.add_argument('--d_thres', dest='days_thres', nargs='?', type=float, default=None)
 
     parser.add_argument('--n', dest='n', nargs='?', type=int, default=5)
