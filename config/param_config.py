@@ -6,10 +6,13 @@ cosine_flag = True
 ccle_only = False 
 a_thres = 0.0
 pseudo_loss_flag = False
+############ Subset Selection #########
+subset_selection_flag = True
+
 seed = 2020
-folder_name = "logs/exp2_mlp"
+folder_name = "logs/exp_tmp"
 assert(not graphLoader)
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 # eff_drug_list = ['fu', 'tem', 'gem', 'cis', 'sor']
 eff_drug_list = [ 'sor', 'gem', 'fu', 'cis','tem' ]
 # eff_drug_list = ['gem']

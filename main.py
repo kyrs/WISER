@@ -159,16 +159,17 @@ def main(args, update_params_dict):
             days_threshold=args.days_thres,
             pdtc_flag=args.pdtc_flag,
             n_splits=args.n,
-            graphLoader=graphLoader)
+            graphLoader=graphLoader,
+            return_unlabeled_tcga_flag = param_config.subset_selection_flag
+            )
 
 
         fold_count = 0
-        ## NOTE: Remove sparce weight vec
-        for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, labeled_tcga_dataloader in labeled_dataloader_generator:
+        for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, labeled_tcga_dataloader, unlabeled_tcga_dataloader in labeled_dataloader_generator:
             ft_encoder = deepcopy(encoder)
             ft_basis_vec = deepcopy(basis_vec)
             
-            target_classifier, ft_historys = fine_tuning.fine_tune_encoder_basis(
+            target_classifier, info_unlabeled_tcga, ft_historys = fine_tuning.fine_tune_encoder_basis(
                 encoder=ft_encoder,
                 basis_vec = ft_basis_vec,
                 inv_temp = inv_temp,
@@ -176,11 +177,13 @@ def main(args, update_params_dict):
                 train_dataloader=train_labeled_ccle_dataloader,
                 val_dataloader=test_labeled_ccle_dataloader,
                 test_dataloader=labeled_tcga_dataloader,
-                seed=fold_count, ## NOTE: CHECK
+                seed=fold_count,
+                unlabeled_tcga_dataloader = unlabeled_tcga_dataloader, 
                 normalize_flag=args.norm_flag,
                 metric_name=args.metric,
                 graphLoader=graphLoader, 
                 task_save_folder=task_save_folder,
+                subset_selection_flag = param_config.subset_selection_flag,
                 **wrap_training_params(training_params, type='labeled')
             )
             ft_evaluation_metrics['best_index'].append(ft_historys[-2]['best_index'])
@@ -202,14 +205,14 @@ def main(args, update_params_dict):
 if __name__ == '__main__':
     set_seed(param_config.seed)
     basis_drug_list = param_config.basis_drug_list
-    print(param_config.a_thres)
+
     parser = argparse.ArgumentParser('ADSN training and evaluation')
     parser.add_argument('--method', dest='method', nargs='?', default='code_adv',
                         choices=['code_adv', 'dsn', 'dsna','code_base', 'code_mmd', 'adae', 'coral', 'dae', 'vae', 'ae'])
     parser.add_argument('--metric', dest='metric', nargs='?', default='auroc', choices=['auroc', 'auprc'])
 
     parser.add_argument('--measurement', dest='measurement', nargs='?', default='AUC', choices=['AUC', 'LN_IC50'])
-    parser.add_argument('--a_thres', dest='a_thres', nargs='?', type=float, default=param_config.a_thres)
+    parser.add_argument('--a_thres', dest='a_thres', nargs='?', type=float, default=None)
     parser.add_argument('--d_thres', dest='days_thres', nargs='?', type=float, default=None)
 
     parser.add_argument('--n', dest='n', nargs='?', type=int, default=5)
@@ -243,11 +246,18 @@ if __name__ == '__main__':
     # "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
     # }
 
+    # params_grid = {
+    # "pretrain_num_epochs": [50, 100, 300],
+    # "train_num_epochs": [0, 1000, 2000, 2500],
+    # "dop": [0.1, 0.0],
+    # "inv_temp": [0.001, 10, 2, 2.5, 100, 1]
+    # }
+
     params_grid = {
-    "pretrain_num_epochs": [50, 100, 300],
-    "train_num_epochs": [1000, 2000, 2500],
-    "dop": [0.1, 0.0],
-    "inv_temp": [0.001, 10, 2, 2.5, 100, 1]
+    "pretrain_num_epochs": [5],
+    "train_num_epochs": [5],
+    "dop": [0.1],
+    "inv_temp": [1]
     }
     if args.method not in ['code_adv', 'adsn', 'adae', 'dsnw']:
         params_grid.pop('pretrain_num_epochs')

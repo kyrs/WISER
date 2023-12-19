@@ -99,7 +99,7 @@ def graphMetaData(npFeature, npLabel, gene_gene_inter, drug_gene_inter, drug_fet
     return graphList
 
 
-def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_threshold=None, tcga_cancer_type=None, graphLoader=True):
+def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_threshold=None, tcga_cancer_type=None, graphLoader=True, return_unlabeled_tcga_flag=True):
     if tcga_cancer_type is not None:
         raise NotImplementedError("Only support pan-cancer")
 
@@ -122,39 +122,32 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
     labeled_tcga_gex_feature_df = tcga_gex_feature_df.loc[
         drug_tcga_response_df.index.intersection(tcga_gex_feature_df.index)]
     labeled_df = tcga_response_df.loc[labeled_tcga_gex_feature_df.index]
-    # print(labeled_df)
+    unlabeled_index = tcga_gex_feature_df.index[~tcga_gex_feature_df.index.isin(labeled_tcga_gex_feature_df.index)] 
+    unlabeled_tcga_df = tcga_gex_feature_df.loc[unlabeled_index]
+    assert(len(unlabeled_tcga_df) == (len(tcga_gex_feature_df) - len(labeled_tcga_gex_feature_df)))
     assert (all(labeled_df.index == labeled_tcga_gex_feature_df.index))
-
     # ********** added data for RECIST score **************************
-    recist_data = pd.read_csv(data_config.tcga_drug_first_response_file)
-    recist_data = recist_data.set_index('bcr_patient_barcode')
-    # removing overlapping indices between relapse time and recist score dfs
-    # recist_bcr = (recist_data.index.intersection(tcga_gex_feature_df.index.intersection(tcga_treatment_df.index))).difference(tcga_response_df.index.intersection(tcga_gex_feature_df.index.intersection(tcga_treatment_df.index)))
-
-    recist_bcr = recist_data.index.intersection(tcga_gex_feature_df.index.intersection(tcga_treatment_df.index))
-
-    recist_tcga_gex = tcga_gex_feature_df.loc[recist_bcr]
-    recist_labels = recist_data.loc[recist_bcr]
-    recist_drugs = tcga_treatment_df.loc[recist_bcr]
-
-    thresholding = {'Stable Disease' : 0, 
-                'Progressive Disease' : 0, 
-                'Complete Response' : 1,
-                'Complete Remission/Response' : 1, 
-                'Partial Remission/Response' : 1,
-                'Persistent Disease' : 0, 
-                'Partial Response' : 1}
-
-    recist_labels['treatment_outcome_at_tcga_followup'].replace(thresholding, inplace = True)
-
-    recist_tcga_drug_barcodes = recist_drugs.index[recist_drugs['pharmaceutical_therapy_drug_name'] == drug]
-    drug_tcga_recist_labels = recist_labels.loc[tcga_drug_barcodes.intersection(recist_labels.index)]
-    recist_labeled_tcga_gex_feature_df = tcga_gex_feature_df.loc[
-        drug_tcga_recist_labels.index.intersection(tcga_gex_feature_df.index)]
-    recist_labeled_df = drug_tcga_recist_labels.loc[recist_labeled_tcga_gex_feature_df.index]
-    recist_drug_labels = np.array(recist_labeled_df['treatment_outcome_at_tcga_followup'])
-
-    assert (all(recist_labeled_df.index == recist_labeled_tcga_gex_feature_df.index))
+    # recist_data = pd.read_csv(data_config.tcga_drug_first_response_file)
+    # recist_data = recist_data.set_index('bcr_patient_barcode')
+    # recist_bcr = recist_data.index.intersection(tcga_gex_feature_df.index.intersection(tcga_treatment_df.index))
+    # recist_tcga_gex = tcga_gex_feature_df.loc[recist_bcr]
+    # recist_labels = recist_data.loc[recist_bcr]
+    # recist_drugs = tcga_treatment_df.loc[recist_bcr]
+    # thresholding = {'Stable Disease' : 0, 
+    #             'Progressive Disease' : 0, 
+    #             'Complete Response' : 1,
+    #             'Complete Remission/Response' : 1, 
+    #             'Partial Remission/Response' : 1,
+    #             'Persistent Disease' : 0, 
+    #             'Partial Response' : 1}
+    # recist_labels['treatment_outcome_at_tcga_followup'].replace(thresholding, inplace = True)
+    # recist_tcga_drug_barcodes = recist_drugs.index[recist_drugs['pharmaceutical_therapy_drug_name'] == drug]
+    # drug_tcga_recist_labels = recist_labels.loc[tcga_drug_barcodes.intersection(recist_labels.index)]
+    # recist_labeled_tcga_gex_feature_df = tcga_gex_feature_df.loc[
+    #     drug_tcga_recist_labels.index.intersection(tcga_gex_feature_df.index)]
+    # recist_labeled_df = drug_tcga_recist_labels.loc[recist_labeled_tcga_gex_feature_df.index]
+    # recist_drug_labels = np.array(recist_labeled_df['treatment_outcome_at_tcga_followup'])
+    # assert (all(recist_labeled_df.index == recist_labeled_tcga_gex_feature_df.index))
     # ****************************************************************
 
     if days_threshold is None:
@@ -176,9 +169,15 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
             torch.from_numpy(labeled_tcga_gex_feature_df.values.astype('float32')),
             torch.from_numpy(drug_label))
 
+        unlabeled_tcga_dataset = TensorDataset(
+            torch.from_numpy(unlabeled_tcga_df.values.astype('float32')),
+            torch.from_numpy(np.arange(len(unlabeled_tcga_df))) ## define index to track features
+        )
+
         labeled_tcga_dataloader = DataLoader(labeled_tcga_dateset,
                                             batch_size=batch_size,
                                             shuffle=True)
+        unlabeled_tcga_dataloader = DataLoader(unlabeled_tcga_dataset,batch_size=batch_size)
     else:
         listGeneRel = load_json(data_config.gene_gene_relation)
         listDrugRel = load_json(data_config.drug_gene_relation)
@@ -189,7 +188,10 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
         assert(len(gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
         graph_node_list = graphMetaData(npFeature =labeled_tcga_gex_feature_df.values.astype('float32') , npLabel = drug_label, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
         labeled_tcga_dataloader = geo_dataLoader(graph_node_list, batch_size=batch_size, shuffle=True)
-    return labeled_tcga_dataloader
+    if not return_unlabeled_tcga_flag:
+        return labeled_tcga_dataloader, ""
+    else:
+        return labeled_tcga_dataloader, unlabeled_tcga_dataloader
 
 def get_tcga_preprocessed_labeled_dataloaders(gex_features_df, drug, batch_size):
     if drug not in ['gem', 'fu']:
@@ -477,7 +479,7 @@ def get_labeled_dataloaders(gex_features_df, drug, seed, batch_size, ccle_measur
 def get_labeled_dataloader_generator(gex_features_df, drug, seed, batch_size, ccle_measurement='AUC', threshold=None,
                                      days_threshold=None,
                                      pdtc_flag=False,
-                                     n_splits=5, graphLoader=True):
+                                     n_splits=5, graphLoader=True, return_unlabeled_tcga_flag=False):
     """
     sensitive (responder): 1
     resistant (non-responder): 0
@@ -518,13 +520,14 @@ def get_labeled_dataloader_generator(gex_features_df, drug, seed, batch_size, cc
                                                                                  drug=drug[1:],
                                                                                  batch_size=batch_size, graphLoader=graphLoader)
         else:
-            test_labeled_dataloaders = get_tcga_labeled_dataloaders(gex_features_df=gex_features_df,
+            test_labeled_dataloaders, unlabeled_tcga_dataloaders = get_tcga_labeled_dataloaders(gex_features_df=gex_features_df,
                                                                     drug=drug_name,
                                                                     batch_size=batch_size,
-                                                                    days_threshold=days_threshold, graphLoader=graphLoader)
+                                                                    days_threshold=days_threshold, graphLoader=graphLoader, return_unlabeled_tcga_flag=return_unlabeled_tcga_flag)
 
+            
     for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader in ccle_labeled_dataloader_generator:
-        yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, test_labeled_dataloaders
+        yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, test_labeled_dataloaders, unlabeled_tcga_dataloaders
 
 
 def get_ccle_labeled_tissue_dataloader_generator(gex_features_df, drug, batch_size, seed=2020, threshold=None,

@@ -7,7 +7,7 @@ from src.types_ import *
 
 class EncoderDecoder_basis(nn.Module):
 
-    def __init__(self, encoder, decoder, basis_vec,  testing_drug_len, inv_temp = 1, normalize_flag=False, cosine_flag=False):
+    def __init__(self, encoder, decoder, basis_vec,  testing_drug_len, inv_temp = 1, normalize_flag=False, cosine_flag=True ):
         super(EncoderDecoder_basis, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
@@ -16,6 +16,7 @@ class EncoderDecoder_basis(nn.Module):
         self.inv_temp = inv_temp
         self.testing_drug_len = testing_drug_len
         self.cosine_flag = cosine_flag
+        print(f" fine tuning ==> cosine Flag : {self.cosine_flag} inv_temp : {self.inv_temp}, norm_flag : {self.normalize_flag}")
     def forward(self, inputFet) -> Tensor:
         
         if self.normalize_flag:
@@ -30,7 +31,7 @@ class EncoderDecoder_basis(nn.Module):
 
         if self.cosine_flag :
             encoded_input =  nn.functional.normalize(encoded_input, p=2, dim=1)
-            norm_weighted_basis = nn.functional.normalize(encoded_input, p=2, dim=1)
+            norm_weighted_basis = nn.functional.normalize(weighted_basis, p=2, dim=1)
             project_code = torch.matmul(encoded_input, norm_weighted_basis.T.detach())
         else:
             project_code = torch.matmul(encoded_input, weighted_basis.T.detach())
@@ -42,8 +43,7 @@ class EncoderDecoder_basis(nn.Module):
         if self.normalize_flag:
             final_code = nn.functional.normalize(final_code, p=2, dim=1)
         output = self.decoder(final_code)
-
-        return output
+        return output, final_code
 
     def encode(self, input: Tensor) -> Tensor:
         
@@ -56,7 +56,9 @@ class EncoderDecoder_basis(nn.Module):
 
         if self.cosine_flag :
             encoded_input =  nn.functional.normalize(encoded_input, p=2, dim=1)
-            norm_weighted_basis = nn.functional.normalize(encoded_input, p=2, dim=1)
+            print(weighted_basis.shape)
+            norm_weighted_basis = nn.functional.normalize(weighted_basis, p=2, dim=1)
+            print(norm_weighted_basis.shape)
             project_code = torch.matmul(encoded_input, norm_weighted_basis.T.detach())
         else:
             project_code = torch.matmul(encoded_input, weighted_basis.T.detach())

@@ -130,6 +130,7 @@ def prepare_CCLE_files():
 def fetchCCLE_datafordrug(CCLE_Files, drug, diagnosis = False, threshold = None):    
 
     #NOTE : change the value of threshold 
+    threshold = 0.0
     drug = drug.lower()
     
     gdsc1_sensitivity_df = CCLE_Files['gdsc1_sensitivity_df']

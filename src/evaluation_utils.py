@@ -65,7 +65,8 @@ def evaluate_target_classification_epoch(classifier, dataloader, device, history
         y_batch = y_batch.to(device)
         with torch.no_grad():
             y_truths = np.concatenate([y_truths, y_batch.cpu().detach().numpy().ravel()])
-            y_pred = torch.sigmoid(classifier(x_batch)).detach()
+            logit, fet = classifier(x_batch)
+            y_pred = torch.sigmoid(logit).detach()
             y_preds = np.concatenate([y_preds, y_pred.cpu().detach().numpy().ravel()])
 
     history['acc'].append(accuracy_score(y_true=y_truths, y_pred=(y_preds > 0.5).astype('int')))
@@ -78,6 +79,32 @@ def evaluate_target_classification_epoch(classifier, dataloader, device, history
     return history
 
 
+def evaluate_unlabeled_tcga_classification_epoch(classifier, dataloader, device, graphLoader):
+    pseudo_label_info = {}
+    classifier.eval()
+    cnt = 0
+    for batch in dataloader:
+        print(f"unlabelled cnt :{cnt}")
+        cnt+=1
+        if not graphLoader:
+            x_batch = batch[0]
+            idx_batch = batch[1]
+        else:
+            ## NOTE : vrify batch size
+            x_batch = batch 
+            
+        
+        x_batch = x_batch.to(device)
+        with torch.no_grad():
+            logit, fet =  classifier(x_batch)
+            y_pred = torch.sigmoid(logit).detach()
+            for fet, idx, pseudo_label in zip(fet,idx_batch, y_pred):
+                pseudo_label_info[idx.item()] = {"fet": fet.detach(), "prob" : pseudo_label.detach()}
+    print(pseudo_label_info)
+    exit()
+    return pseudo_label_info
+            
+
 def evaluate_adv_classification_epoch(classifier, s_dataloader, t_dataloader, device, history):
     y_truths = np.array([])
     y_preds = np.array([])
@@ -87,14 +114,16 @@ def evaluate_adv_classification_epoch(classifier, s_dataloader, t_dataloader, de
         s_x = s_batch[0].to(device)
         with torch.no_grad():
             y_truths = np.concatenate([y_truths, np.zeros(s_x.shape[0]).ravel()])
-            s_y_pred = torch.sigmoid(classifier(s_x)).detach()
+            logit, fet = classifier(s_x)
+            s_y_pred = torch.sigmoid(logit).detach()
             y_preds = np.concatenate([y_preds, s_y_pred.cpu().detach().numpy().ravel()])
 
     for t_batch in t_dataloader:
         t_x = t_batch[0].to(device)
         with torch.no_grad():
             y_truths = np.concatenate([y_truths, np.ones(t_x.shape[0]).ravel()])
-            t_y_pred = torch.sigmoid(classifier(t_x)).detach()
+            logit, fet = classifier(t_x)
+            t_y_pred = torch.sigmoid(logit).detach()
             y_preds = np.concatenate([y_preds, t_y_pred.cpu().detach().numpy().ravel()])
 
     history['acc'].append(accuracy_score(y_true=y_truths, y_pred=(y_preds > 0.5).astype('int')))
@@ -114,7 +143,8 @@ def predict_target_classification(classifier, test_df, device):
     for df in [test_df[i:i+64] for i in range(0,test_df.shape[0],64)]:
         x_batch = torch.from_numpy(df.values.astype('float32')).to(device)
         with torch.no_grad():
-            y_pred = torch.sigmoid(classifier(x_batch)).detach()
+            logit, fet = classifier(x_batch)
+            y_pred = torch.sigmoid(logit).detach()
             y_preds = np.concatenate([y_preds, y_pred.cpu().detach().numpy().ravel()])
 
     output_df = pd.DataFrame(y_preds,index=test_df.index,columns=['score'])

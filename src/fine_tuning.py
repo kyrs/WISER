@@ -1,4 +1,4 @@
-from src.evaluation_utils import evaluate_target_classification_epoch, model_save_check, predict_target_classification
+from src.evaluation_utils import evaluate_target_classification_epoch, model_save_check, predict_target_classification,evaluate_unlabeled_tcga_classification_epoch
 from collections import defaultdict
 from itertools import chain
 from src.mlp import MLP, geo_MLP
@@ -20,7 +20,7 @@ def classification_train_step(model, batch, loss_fn, device, optimizer, history,
         y = batch["label"].to(device)
        
     ## NOTE : check batch size for all the batch process 
-    loss = loss_fn(model(x), y.double().unsqueeze(1))
+    loss = loss_fn(model(x)[0], y.double().unsqueeze(1))
 
     optimizer.zero_grad()
     loss.backward()
@@ -40,13 +40,15 @@ def fine_tune_encoder_basis(encoder, basis_vec,  train_dataloader, val_dataloade
                       normalize_flag=False,
                       break_flag=False,
                       test_df=None,
+                      unlabeled_tcga_dataloader=None,
                       graphLoader=True,
+                      subset_selection_flag = False,
                       **kwargs):
     
     target_decoder = MLP(input_dim=kwargs['latent_dim'],
                          output_dim=1,
                          hidden_dims=kwargs['classifier_hidden_dims']).to(kwargs['device'])
-    target_classifier = EncoderDecoder_basis(encoder=encoder, decoder=target_decoder, basis_vec = basis_vec,  normalize_flag=normalize_flag, testing_drug_len = kwargs['testing_drug_len'], inv_temp = inv_temp).to(
+    target_classifier = EncoderDecoder_basis(encoder=encoder, decoder=target_decoder, basis_vec = basis_vec,  normalize_flag=normalize_flag, testing_drug_len = kwargs['testing_drug_len'], inv_temp=inv_temp, cosine_flag=kwargs['cosine_flag']).to(
         kwargs['device'])
     
     classification_loss = nn.BCEWithLogitsLoss()
@@ -137,6 +139,10 @@ def fine_tune_encoder_basis(encoder, basis_vec,  train_dataloader, val_dataloade
         prediction_df = predict_target_classification(classifier=target_classifier, test_df=test_df,
                                                       device=kwargs['device'])
 
-    return target_classifier, (target_classification_train_history, target_classification_eval_train_history,
+    if not subset_selection_flag:
+        return target_classifier, (target_classification_train_history, target_classification_eval_train_history,
                                target_classification_eval_val_history, target_classification_eval_test_history)
-
+    else:
+        fetInfoDict = evaluate_unlabeled_tcga_classification_epoch(classifier=target_classifier, dataloader = unlabeled_tcga_dataloader, device=kwargs['device'], graphLoader=graphLoader)
+        return  target_classifier, fetInfoDict, (target_classification_train_history, target_classification_eval_train_history,
+                               target_classification_eval_val_history, target_classification_eval_test_history)
