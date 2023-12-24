@@ -83,26 +83,28 @@ def evaluate_unlabeled_tcga_classification_epoch(classifier, dataloader, device,
     pseudo_label_info = {}
     classifier.eval()
     cnt = 0
-    for batch in dataloader:
-        print(f"unlabelled cnt :{cnt}")
-        cnt+=1
-        if not graphLoader:
-            x_batch = batch[0]
-            idx_batch = batch[1]
-        else:
-            ## NOTE : vrify batch size
-            x_batch = batch 
+    if dataloader is not None:
+        for batch in dataloader:
+            print(f"unlabelled cnt :{cnt}")
+            cnt+=1
+            if not graphLoader:
+                x_batch = batch[0]
+                idx_batch = batch[1]
+            else:
+                ## NOTE : vrify batch size
+                x_batch = batch 
+                
             
+            x_batch = x_batch.to(device)
+            with torch.no_grad():
+                logit, fet =  classifier(x_batch)
+                y_pred = torch.sigmoid(logit).detach()
+                for fet, idx, pseudo_label in zip(fet,idx_batch, y_pred):
+                    pseudo_label_info[idx.item()] = {"fet": fet.detach().cpu().numpy(), "prob" : pseudo_label.detach().cpu().numpy()}
         
-        x_batch = x_batch.to(device)
-        with torch.no_grad():
-            logit, fet =  classifier(x_batch)
-            y_pred = torch.sigmoid(logit).detach()
-            for fet, idx, pseudo_label in zip(fet,idx_batch, y_pred):
-                pseudo_label_info[idx.item()] = {"fet": fet.detach().cpu().numpy(), "prob" : pseudo_label.detach().cpu().numpy()}
-    
-    return pseudo_label_info
-            
+        return pseudo_label_info
+    else:
+         return {}
 
 def evaluate_adv_classification_epoch(classifier, s_dataloader, t_dataloader, device, history):
     y_truths = np.array([])

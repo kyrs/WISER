@@ -3,6 +3,7 @@ import torch
 from scipy.stats import mode
 
 def LabelPred(prob, class_0_th, class_1_th):
+    # print(prob)
     if prob <  class_0_th:
         return 0 
     if prob >  class_1_th:
@@ -17,7 +18,7 @@ def MajorityVote(row):
         return -1
     else:
         return mode(row[row!=-1]).mode[0]
-def select_data(index_dict_list, class_0_th=0.25, class_1_th = 0.8):
+def select_data(index_dict_list, class_0_th=0.2, class_1_th = 0.8):
     ## selecting the data points for downstream training
     fet_dict = {}
     label_dict = {}
@@ -41,20 +42,23 @@ def select_data(index_dict_list, class_0_th=0.25, class_1_th = 0.8):
 
     non_abstrain = torch.tensor(labelArray!=-1).squeeze(1)
     abstrain = torch.tensor(labelArray==-1).squeeze(1)
+
     print("Non abstrain : ", sum(non_abstrain))
     print("abstrain : ", sum(abstrain))
-    # non_abstain_fet = fetArray[non_abstrain]
-    non_abstrain_label = labelArray[non_abstrain].squeeze(1)
-    non_abstain_fet = fetArray[non_abstrain]
-    non_abstrain_index = torch.arange(len(labelArray))[non_abstrain]
-    print(non_abstain_fet.shape,non_abstrain_label.shape)
-    select_index = get_cutstat_inds(non_abstain_fet,non_abstrain_label)
-    select_index = torch.tensor(select_index)
+    if sum(non_abstrain) != 0:
+        non_abstrain_label = labelArray[non_abstrain].squeeze(1)
+        non_abstain_fet = fetArray[non_abstrain]
+        non_abstrain_index = torch.arange(len(labelArray))[non_abstrain]
+        print(non_abstain_fet.shape,non_abstrain_label.shape)
+        select_index = get_cutstat_inds(non_abstain_fet,non_abstrain_label)
+        select_index = torch.tensor(select_index)
 
-    final_label = torch.index_select(non_abstrain_label, 0, select_index)
-    final_index = torch.index_select(non_abstrain_index, 0, select_index)
-    print(sum(final_label==1), sum(final_label==0))
-    exit()
+        final_label = torch.index_select(non_abstrain_label, 0, select_index)
+        final_index = torch.index_select(non_abstrain_index, 0, select_index)
+        print("final set  1: ", sum(final_label==1), "final set  0: ", sum(final_label==0))
+        return final_index, final_label
+    else:
+        return [], []
 def get_cutstat_inds(features, labels, coverage=0.5, K=20, device='cpu'):
         # move to CPU for memory issues on large dset
     pairwise_dists = torch.cdist(features, features, p=2).to('cpu')
@@ -69,7 +73,7 @@ def get_cutstat_inds(features, labels, coverage=0.5, K=20, device='cpu'):
     weights = weights.to(device)
     cut_vals = (labels[:,None] != labels[None,:]).long()
     cut_neighbors = cut_vals[torch.arange(N)[:,None], neighbors]
-    print(weights.shape, cut_neighbors.shape)
+    # print(weights.shape, cut_neighbors.shape)
     Jp = (weights * cut_neighbors).sum(dim=1)
     weak_counts = torch.bincount(labels)
     weak_pct = weak_counts / weak_counts.sum()

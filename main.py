@@ -156,6 +156,7 @@ def main(args, update_params_dict):
             drug=drug,
             ccle_measurement=args.measurement,
             threshold=args.a_thres,
+            merged_tcga_add_data =None,
             days_threshold=args.days_thres,
             pdtc_flag=args.pdtc_flag,
             n_splits=args.n,
@@ -166,7 +167,7 @@ def main(args, update_params_dict):
 
         fold_count = 0
         predicton_list_unlabeled = []
-        for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, labeled_tcga_dataloader, unlabeled_tcga_dataloader in labeled_dataloader_generator:
+        for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, labeled_tcga_dataloader, unlabeled_tcga_dataloader, unlabeled_tcga_df in labeled_dataloader_generator:
             ft_encoder = deepcopy(encoder)
             ft_basis_vec = deepcopy(basis_vec)
             
@@ -200,10 +201,62 @@ def main(args, update_params_dict):
         else:
             with open(os.path.join(task_save_folder, f'{param_str}_ft_evaluation_results.json'), 'w') as f:
                 json.dump(ft_evaluation_metrics, f)
+        if param_config.subset_selection_flag:
+            index_to_select, associated_label = select_data(predicton_list_unlabeled)
+            if len(index_to_select) == 0:
+                continue
+            else:
+                ################## running again with new merged set##################
+                fold_count=0
+                fet_tcga_train_select = torch.index_select(torch.from_numpy(unlabeled_tcga_df.values.astype('float32')),0, index_to_select)
+                labeled_ccle_merge_tcga_dataloader_generator = get_labeled_dataloader_generator(
+                gex_features_df=gex_features_df,
+                seed=seed,
+                batch_size=training_params['labeled']['batch_size'],
+                drug=drug,
+                merged_tcga_add_data = (fet_tcga_train_select,associated_label),
+                ccle_measurement=args.measurement,
+                threshold=args.a_thres,
+                days_threshold=args.days_thres,
+                pdtc_flag=args.pdtc_flag,
+                n_splits=args.n,
+                graphLoader=graphLoader,
+                return_unlabeled_tcga_flag = False
+                )
+                ft_evaluation_metrics = defaultdict(list)
+                for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, labeled_tcga_dataloader, unlabeled_tcga_dataloader, unlabeled_tcga_df in labeled_ccle_merge_tcga_dataloader_generator:
+                    target_classifier, ft_historys = fine_tuning.fine_tune_encoder_basis(
+                        encoder=ft_encoder,
+                        basis_vec = ft_basis_vec,
+                        inv_temp = inv_temp,
+                        cosine_flag=cosine_flag,
+                        train_dataloader=train_labeled_ccle_dataloader,
+                        val_dataloader=test_labeled_ccle_dataloader,
+                        test_dataloader=labeled_tcga_dataloader,
+                        seed=fold_count,
+                        unlabeled_tcga_dataloader = unlabeled_tcga_dataloader, 
+                        normalize_flag=args.norm_flag,
+                        metric_name=args.metric,
+                        graphLoader=graphLoader, 
+                        task_save_folder=task_save_folder,
+                        subset_selection_flag = False,
+                        **wrap_training_params(training_params, type='labeled')
+                    )
+                    ft_evaluation_metrics['best_index'].append(ft_historys[-2]['best_index'])
+                    for metric in ['auroc', 'acc', 'aps', 'f1', 'auprc']:
+                        ft_evaluation_metrics[metric].append(ft_historys[test_data_index][metric][ft_historys[-2]['best_index']])
+                    fold_count += 1
+                
+                    predicton_list_unlabeled.append(info_unlabeled_tcga)
+                if args.hpt_flag == True:
+                    path_save = "alpha" + param_str.split("_alpha")[1]
+                    with open(os.path.join(task_save_folder, f'{path_save}_ft_evaluation_results_subset.json'), 'w') as f:
+                        json.dump(ft_evaluation_metrics, f)
+                else:
+                    with open(os.path.join(task_save_folder, f'{param_str}_ft_evaluation_results_subset.json'), 'w') as f:
+                        json.dump(ft_evaluation_metrics, f)
 
-        select_data(predicton_list_unlabeled)
-
-
+                exit()
 if __name__ == '__main__':
     set_seed(param_config.seed)
     basis_drug_list = param_config.basis_drug_list
@@ -248,19 +301,19 @@ if __name__ == '__main__':
     # "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
     # }
 
-    # params_grid = {
-    # "pretrain_num_epochs": [50, 100, 300],
-    # "train_num_epochs": [0, 1000, 2000, 2500],
-    # "dop": [0.1, 0.0],
-    # "inv_temp": [0.001, 10, 2, 2.5, 100, 1]
-    # }
-
     params_grid = {
-    "pretrain_num_epochs": [5],
-    "train_num_epochs": [5],
-    "dop": [0.1],
-    "inv_temp": [1]
+    "pretrain_num_epochs": [50, 100, 300],
+    "train_num_epochs": [0, 1000, 2000, 2500],
+    "dop": [0.1, 0.0],
+    "inv_temp": [0.001, 10, 2, 2.5, 100, 1]
     }
+
+    # params_grid = {
+    # "pretrain_num_epochs": [50],
+    # "train_num_epochs": [50],
+    # "dop": [0.1],
+    # "inv_temp": [1]
+    # }
     if args.method not in ['code_adv', 'adsn', 'adae', 'dsnw']:
         params_grid.pop('pretrain_num_epochs')
 

@@ -189,7 +189,7 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
         graph_node_list = graphMetaData(npFeature =labeled_tcga_gex_feature_df.values.astype('float32') , npLabel = drug_label, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
         labeled_tcga_dataloader = geo_dataLoader(graph_node_list, batch_size=batch_size, shuffle=True)
     if not return_unlabeled_tcga_flag:
-        return labeled_tcga_dataloader, "", ""
+        return labeled_tcga_dataloader, None, None
     else:
         return labeled_tcga_dataloader, unlabeled_tcga_dataloader, unlabeled_tcga_df
 
@@ -333,7 +333,7 @@ def get_ccle_labeled_dataloaders(gex_features_df, seed, drug, batch_size, ft_fla
     return (train_labeled_ccle_dataloader, test_labeled_ccle_dataloader) if ft_flag else labeled_ccle_dataloader
 
 
-def get_ccle_labeled_dataloader_generator(gex_features_df, drug, batch_size, seed=2020, threshold=None,
+def get_ccle_labeled_dataloader_generator(gex_features_df, drug, batch_size, seed=2020, threshold=None,merged_tcga_add_data=None,
                                           measurement='AUC', n_splits=5, graphLoader=True):
     measurement = 'Z_SCORE'
     threshold = 0.0
@@ -402,12 +402,30 @@ def get_ccle_labeled_dataloader_generator(gex_features_df, drug, batch_size, see
 
         
         if not graphLoader:
-            train_labeled_ccle_dateset = TensorDataset(
-                torch.from_numpy(train_labeled_ccle_df.astype('float32')),
-                torch.from_numpy(train_ccle_labels))
-            test_labeled_ccle_df = TensorDataset(
-                torch.from_numpy(test_labeled_ccle_df.astype('float32')),
-                torch.from_numpy(test_ccle_labels))
+            if merged_tcga_add_data is not None:
+                tcga_data, tcga_label = merged_tcga_add_data
+                print ("merging TCGA data")
+                merged_ccle_train_fet = torch.vstack([torch.from_numpy(train_labeled_ccle_df.astype('float32')), tcga_data])
+                print(torch.from_numpy(train_ccle_labels).shape, tcga_label.shape)
+                merged_ccle_train_label = torch.cat((torch.from_numpy(train_ccle_labels), tcga_label),0)
+                
+                train_labeled_ccle_dateset = TensorDataset(
+                    merged_ccle_train_fet,
+                    merged_ccle_train_label)
+
+                test_labeled_ccle_df = TensorDataset(
+                    torch.from_numpy(test_labeled_ccle_df.astype('float32')),
+                    torch.from_numpy(test_ccle_labels))
+            
+            else:
+                print("merged data detail ")
+                train_labeled_ccle_dateset = TensorDataset(
+                    torch.from_numpy(train_labeled_ccle_df.astype('float32')),
+                    torch.from_numpy(train_ccle_labels))
+
+                test_labeled_ccle_df = TensorDataset(
+                    torch.from_numpy(test_labeled_ccle_df.astype('float32')),
+                    torch.from_numpy(test_ccle_labels))
 
             train_labeled_ccle_dataloader = DataLoader(train_labeled_ccle_dateset,
                                                     batch_size=batch_size,
@@ -479,6 +497,7 @@ def get_labeled_dataloaders(gex_features_df, drug, seed, batch_size, ccle_measur
 def get_labeled_dataloader_generator(gex_features_df, drug, seed, batch_size, ccle_measurement='AUC', threshold=None,
                                      days_threshold=None,
                                      pdtc_flag=False,
+                                     merged_tcga_add_data = None,
                                      n_splits=5, graphLoader=True, return_unlabeled_tcga_flag=False):
     """
     sensitive (responder): 1
@@ -504,6 +523,7 @@ def get_labeled_dataloader_generator(gex_features_df, drug, seed, batch_size, cc
                                                                               drug=gdsc_drug,
                                                                               batch_size=batch_size,
                                                                               threshold=threshold,
+                                                                              merged_tcga_add_data = merged_tcga_add_data,
                                                                               measurement=ccle_measurement,
                                                                               n_splits=n_splits,
                                                                               graphLoader=graphLoader)
@@ -520,14 +540,14 @@ def get_labeled_dataloader_generator(gex_features_df, drug, seed, batch_size, cc
                                                                                  drug=drug[1:],
                                                                                  batch_size=batch_size, graphLoader=graphLoader)
         else:
-            test_labeled_dataloaders, unlabeled_tcga_dataloaders = get_tcga_labeled_dataloaders(gex_features_df=gex_features_df,
+            test_labeled_dataloaders, unlabeled_tcga_dataloaders, unlabeled_df = get_tcga_labeled_dataloaders(gex_features_df=gex_features_df,
                                                                     drug=drug_name,
                                                                     batch_size=batch_size,
                                                                     days_threshold=days_threshold, graphLoader=graphLoader, return_unlabeled_tcga_flag=return_unlabeled_tcga_flag)
 
             
     for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader in ccle_labeled_dataloader_generator:
-        yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, test_labeled_dataloaders, unlabeled_tcga_dataloaders
+        yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, test_labeled_dataloaders, unlabeled_tcga_dataloaders, unlabeled_df
 
 
 def get_ccle_labeled_tissue_dataloader_generator(gex_features_df, drug, batch_size, seed=2020, threshold=None,

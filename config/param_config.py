@@ -10,7 +10,7 @@ pseudo_loss_flag = False
 subset_selection_flag = True
 
 seed = 2020
-folder_name = "logs/exp_tmp"
+folder_name = "logs/exp_subset_1_grid"
 assert(not graphLoader)
 device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 # eff_drug_list = ['fu', 'tem', 'gem', 'cis', 'sor']
