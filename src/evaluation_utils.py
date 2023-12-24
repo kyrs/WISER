@@ -99,9 +99,8 @@ def evaluate_unlabeled_tcga_classification_epoch(classifier, dataloader, device,
             logit, fet =  classifier(x_batch)
             y_pred = torch.sigmoid(logit).detach()
             for fet, idx, pseudo_label in zip(fet,idx_batch, y_pred):
-                pseudo_label_info[idx.item()] = {"fet": fet.detach(), "prob" : pseudo_label.detach()}
-    print(pseudo_label_info)
-    exit()
+                pseudo_label_info[idx.item()] = {"fet": fet.detach().cpu().numpy(), "prob" : pseudo_label.detach().cpu().numpy()}
+    
     return pseudo_label_info
             
 

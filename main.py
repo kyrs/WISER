@@ -16,7 +16,7 @@ from src import basis_dataloader
 
 from src import fine_tuning
 from copy import deepcopy
-
+from src.graph_cut_subset import select_data
 
 def generate_encoded_features(encoder, dataloader, normalize_flag=False):
     """
@@ -165,6 +165,7 @@ def main(args, update_params_dict):
 
 
         fold_count = 0
+        predicton_list_unlabeled = []
         for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader, labeled_tcga_dataloader, unlabeled_tcga_dataloader in labeled_dataloader_generator:
             ft_encoder = deepcopy(encoder)
             ft_basis_vec = deepcopy(basis_vec)
@@ -191,6 +192,7 @@ def main(args, update_params_dict):
                 ft_evaluation_metrics[metric].append(ft_historys[test_data_index][metric][ft_historys[-2]['best_index']])
             fold_count += 1
         
+            predicton_list_unlabeled.append(info_unlabeled_tcga)
         if args.hpt_flag == True:
             path_save = "alpha" + param_str.split("_alpha")[1]
             with open(os.path.join(task_save_folder, f'{path_save}_ft_evaluation_results.json'), 'w') as f:
@@ -199,7 +201,7 @@ def main(args, update_params_dict):
             with open(os.path.join(task_save_folder, f'{param_str}_ft_evaluation_results.json'), 'w') as f:
                 json.dump(ft_evaluation_metrics, f)
 
-
+        select_data(predicton_list_unlabeled)
 
 
 if __name__ == '__main__':

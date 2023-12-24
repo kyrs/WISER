@@ -189,9 +189,9 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
         graph_node_list = graphMetaData(npFeature =labeled_tcga_gex_feature_df.values.astype('float32') , npLabel = drug_label, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
         labeled_tcga_dataloader = geo_dataLoader(graph_node_list, batch_size=batch_size, shuffle=True)
     if not return_unlabeled_tcga_flag:
-        return labeled_tcga_dataloader, ""
+        return labeled_tcga_dataloader, "", ""
     else:
-        return labeled_tcga_dataloader, unlabeled_tcga_dataloader
+        return labeled_tcga_dataloader, unlabeled_tcga_dataloader, unlabeled_tcga_df
 
 def get_tcga_preprocessed_labeled_dataloaders(gex_features_df, drug, batch_size):
     if drug not in ['gem', 'fu']:
