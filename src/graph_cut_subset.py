@@ -18,7 +18,7 @@ def MajorityVote(row):
         return -1
     else:
         return mode(row[row!=-1]).mode[0]
-def select_data(index_dict_list, class_0_th=0.2, class_1_th = 0.8):
+def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7):
     ## selecting the data points for downstream training
     fet_dict = {}
     label_dict = {}
@@ -45,7 +45,7 @@ def select_data(index_dict_list, class_0_th=0.2, class_1_th = 0.8):
 
     print("Non abstrain : ", sum(non_abstrain))
     print("abstrain : ", sum(abstrain))
-    if sum(non_abstrain) != 0:
+    if sum(non_abstrain) > 10: ## atleast 10 samples
         non_abstrain_label = labelArray[non_abstrain].squeeze(1)
         non_abstain_fet = fetArray[non_abstrain]
         non_abstrain_index = torch.arange(len(labelArray))[non_abstrain]

@@ -256,7 +256,7 @@ def main(args, update_params_dict):
                     with open(os.path.join(task_save_folder, f'{param_str}_ft_evaluation_results_subset.json'), 'w') as f:
                         json.dump(ft_evaluation_metrics, f)
 
-                exit()
+                
 if __name__ == '__main__':
     set_seed(param_config.seed)
     basis_drug_list = param_config.basis_drug_list
@@ -303,7 +303,7 @@ if __name__ == '__main__':
 
     params_grid = {
     "pretrain_num_epochs": [50, 100, 300],
-    "train_num_epochs": [0, 1000, 2000, 2500],
+    "train_num_epochs": [1000, 2000, 2500],
     "dop": [0.1, 0.0],
     "inv_temp": [0.001, 10, 2, 2.5, 100, 1]
     }
