@@ -18,7 +18,7 @@ def MajorityVote(row):
         return -1
     else:
         return mode(row[row!=-1]).mode[0]
-def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7):
+def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7, budget=0.8):
     ## selecting the data points for downstream training
     fet_dict = {}
     label_dict = {}
@@ -50,7 +50,7 @@ def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7):
         non_abstain_fet = fetArray[non_abstrain]
         non_abstrain_index = torch.arange(len(labelArray))[non_abstrain]
         print(non_abstain_fet.shape,non_abstrain_label.shape)
-        select_index = get_cutstat_inds(non_abstain_fet,non_abstrain_label)
+        select_index = get_cutstat_inds(non_abstain_fet,non_abstrain_label, coverage=budget)
         select_index = torch.tensor(select_index)
 
         final_label = torch.index_select(non_abstrain_label, 0, select_index)
@@ -61,6 +61,7 @@ def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7):
         return [], []
 def get_cutstat_inds(features, labels, coverage=0.5, K=20, device='cpu'):
         # move to CPU for memory issues on large dset
+    print("coverage : ", coverage)    
     pairwise_dists = torch.cdist(features, features, p=2).to('cpu')
 
     N = labels.shape[0]
