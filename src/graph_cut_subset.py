@@ -18,12 +18,13 @@ def MajorityVote(row):
         return -1
     else:
         return mode(row[row!=-1]).mode[0]
-def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7, budget=0.8):
+def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7, budget=0.8, K = 20):
     ## selecting the data points for downstream training
     fet_dict = {}
     label_dict = {}
     index_list = []
     fet_list_flag = False
+    print(f"len index dict list : {len(index_dict_list)}")
     for index_dict in index_dict_list:
         for index in sorted(index_dict):
             if not fet_list_flag:
@@ -33,7 +34,7 @@ def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7, budget=0.8):
                 label_dict[index].append(LabelPred(index_dict[index]["prob"],class_0_th = class_0_th, class_1_th = class_1_th))
             else:
                 label_dict[index] = [LabelPred(index_dict[index]["prob"],class_0_th = class_0_th, class_1_th = class_1_th)]
-        fet_list_flag = False 
+        fet_list_flag = True 
 
     fetArray = np.vstack([fet_dict[i] for i in range(len(label_dict))])
     labelArray = np.vstack([MajorityVote(label_dict[i]) for i in range(len(label_dict))])
@@ -50,7 +51,7 @@ def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7, budget=0.8):
         non_abstain_fet = fetArray[non_abstrain]
         non_abstrain_index = torch.arange(len(labelArray))[non_abstrain]
         print(non_abstain_fet.shape,non_abstrain_label.shape)
-        select_index = get_cutstat_inds(non_abstain_fet,non_abstrain_label, coverage=budget)
+        select_index = get_cutstat_inds(non_abstain_fet,non_abstrain_label, coverage=budget, K = K)
         select_index = torch.tensor(select_index)
 
         final_label = torch.index_select(non_abstrain_label, 0, select_index)
@@ -61,7 +62,8 @@ def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7, budget=0.8):
         return [], []
 def get_cutstat_inds(features, labels, coverage=0.5, K=20, device='cpu'):
         # move to CPU for memory issues on large dset
-    print("coverage : ", coverage)    
+    print("coverage : ", coverage)
+    print("neighbor : ", K)    
     pairwise_dists = torch.cdist(features, features, p=2).to('cpu')
 
     N = labels.shape[0]

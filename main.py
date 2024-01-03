@@ -204,7 +204,7 @@ def main(args, update_params_dict):
             with open(os.path.join(task_save_folder, f'{param_str}_ft_evaluation_results.json'), 'w') as f:
                 json.dump(ft_evaluation_metrics, f)
         if param_config.subset_selection_flag:
-            for budget in [0.1, 0.2, 0.4, 0.6, 0.8, 1]:
+            for budget in [0.1, 0.2, 0.4, 0.5 ,0.6, 0.8, 1]:
                 set_seed(param_config.seed)
                 index_to_select, associated_label = select_data(predicton_list_unlabeled, budget=budget)
                 if len(index_to_select) == 0:
@@ -251,7 +251,6 @@ def main(args, update_params_dict):
                             ft_evaluation_metrics[metric].append(ft_historys[test_data_index][metric][ft_historys[-2]['best_index']])
                         fold_count += 1
                     
-                        predicton_list_unlabeled.append(info_unlabeled_tcga)
                     if args.hpt_flag == True:
                         path_save = "alpha" + param_str.split("_alpha")[1]
                         with open(os.path.join(task_save_folder, f'{path_save}_ft_evaluation_results_subset_{budget}.json'), 'w') as f:
@@ -298,41 +297,64 @@ if __name__ == '__main__':
     parser.set_defaults(hpt_flag=False)
     args = parser.parse_args()
     
-    params_grid = {
-    "pretrain_num_epochs": [50, 100, 300, 500, 800, 1000],
-    "train_num_epochs": [0, 1000, 1500, 2000, 2500, 3000],
-    "dop": [0.0, 0.1],
-    "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
-    }
+    # params_grid = {
+    # "pretrain_num_epochs": [50, 100, 300, 500, 800, 1000],
+    # "train_num_epochs": [0, 1000, 1500, 2000, 2500, 3000],
+    # "dop": [0.0, 0.1],
+    # "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
+    # }
 
     # params_grid = {
     # "pretrain_num_epochs": [50, 100, 300],
     # "train_num_epochs": [1000, 2000, 2500],
     # "dop": [0.1, 0.0],
-    # "inv_temp": [0.001, 10, 2, 2.5, 1]
+    # "inv_temp": [0.01,0.1, 10, 2, 2.5, 1]
     # }
 
+    params_grid = {
+    "pretrain_num_epochs": [300, 100],
+    "train_num_epochs": [2000, 2500],
+    "dop": [0.1,0.0],
+    "inv_temp": [0.1]
+    }
+
     # params_grid = {
-    # "pretrain_num_epochs": [300],
-    # "train_num_epochs": [2500],
-    # "dop": [0.0,0.1],
-    # "inv_temp": [2.5]
+    # "pretrain_num_epochs": [100,300,50],
+    # "train_num_epochs": [1000,2500],
+    # "train_num_epochs": [0.1,0.0],
+    # "inv_temp": [0.25, 0.5, 2, 5, 100, 0.001]
     # }
+    
     if args.method not in ['code_adv', 'adsn', 'adae', 'dsnw']:
         params_grid.pop('pretrain_num_epochs')
 
-    # ************* FOR DOING RANDOMIZED GRIDSEARCH WITH DIFFERENT TEMPERATURE *******************
-    keys, values = zip(*params_grid.items())
-    update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
-    update_params_dict_list = random.sample(update_params_dict_list, 3*80) # to be removed later on (defaultl 80)
-    # # ***********************************************************************************
+    # # ************* FOR DOING RANDOMIZED GRIDSEARCH WITH DIFFERENT TEMPERATURE *******************
+    # keys, values = zip(*params_grid.items())
+    # update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    # update_params_dict_list = random.sample(update_params_dict_list, 90) # to be removed later on (defaultl 80)
+    # # # ***********************************************************************************
 
     # # # ************* FOR DOING GRIDSEARCH KEEPING TEMPERATURE CONSTANT!*******************
     # keys, values = zip(*params_grid.items())
     # update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     # # ***********************************************************************************
 
+    update_params_dict_list = [
+                            #     Fu best hyperparameter
+                                # {"pretrain_num_epochs":100, "train_num_epochs":1000, "dop":0.1, "inv_temp":100},
+                                # {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 } 
+                            #     GEM-best hyperparameter
+                            #     {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
+                            #     {"pretrain_num_epochs":100, "train_num_epochs":2500, "dop":0.0, "inv_temp":0.001 }
 
+                            #     TEM-best hyperparameter
+                                # {"pretrain_num_epochs":300, "train_num_epochs":3000, "dop":0.0, "inv_temp":100},
+                            #     SOR-best hyperparameter
+                                # {"pretrain_num_epochs":500, "train_num_epochs":2000, "dop":0.1, "inv_temp":2},
+                            #     cis-best hyperparameter
+                                # {"pretrain_num_epochs":50, "train_num_epochs":2500, "dop":0.1, "inv_temp":2.5}
+                               
+                                ]
     # CHANGE FOLDER_NAME
     folder_name = 'model_save'
 
