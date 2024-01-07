@@ -13,7 +13,7 @@ from src.data import get_labeled_dataloader_generator
 from config import data_config, param_config
 from src import train_basis_code_adv
 from src import basis_dataloader
-
+from src.explainability_analysis import analyze_features
 from src import fine_tuning
 from copy import deepcopy
 from src.graph_cut_subset import select_data
@@ -211,6 +211,7 @@ def main(args, update_params_dict):
                     continue
                 else:
                     ################## running again with new merged set##################
+                    explain_stats = analyze_features(index_to_select = index_to_select, pseudo_labels=associated_label, fet_df=unlabeled_tcga_df)
                     fold_count=0
                     fet_tcga_train_select = torch.index_select(torch.from_numpy(unlabeled_tcga_df.values.astype('float32')),0, index_to_select)
                     labeled_ccle_merge_tcga_dataloader_generator = get_labeled_dataloader_generator(
@@ -259,7 +260,11 @@ def main(args, update_params_dict):
                         with open(os.path.join(task_save_folder, f'{param_str}_ft_evaluation_results_subset_{budget}.json'), 'w') as f:
                             json.dump(ft_evaluation_metrics, f)
 
-                
+                        if len(explain_stats) > 0:
+                            with open(os.path.join(task_save_folder, f'explain_{param_str}_subset_{budget}_stats.json'), 'w') as f:
+                                json.dump(explain_stats, f)
+                        else:
+                            pass
 if __name__ == '__main__':
     
     basis_drug_list = param_config.basis_drug_list
@@ -311,13 +316,7 @@ if __name__ == '__main__':
     # "inv_temp": [0.01,0.1, 10, 2, 2.5, 1]
     # }
 
-    params_grid = {
-    "pretrain_num_epochs": [300, 100],
-    "train_num_epochs": [2000, 2500],
-    "dop": [0.1,0.0],
-    "inv_temp": [0.1]
-    }
-
+   
     # params_grid = {
     # "pretrain_num_epochs": [100,300,50],
     # "train_num_epochs": [1000,2500],
@@ -342,17 +341,17 @@ if __name__ == '__main__':
     update_params_dict_list = [
                             #     Fu best hyperparameter
                                 # {"pretrain_num_epochs":100, "train_num_epochs":1000, "dop":0.1, "inv_temp":100},
-                                # {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 } 
+                                # {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 }, 
                             #     GEM-best hyperparameter
-                            #     {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
-                            #     {"pretrain_num_epochs":100, "train_num_epochs":2500, "dop":0.0, "inv_temp":0.001 }
+                                # {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
+                                # {"pretrain_num_epochs":100, "train_num_epochs":2500, "dop":0.0, "inv_temp":0.001 }
 
                             #     TEM-best hyperparameter
                                 # {"pretrain_num_epochs":300, "train_num_epochs":3000, "dop":0.0, "inv_temp":100},
                             #     SOR-best hyperparameter
                                 # {"pretrain_num_epochs":500, "train_num_epochs":2000, "dop":0.1, "inv_temp":2},
                             #     cis-best hyperparameter
-                                # {"pretrain_num_epochs":50, "train_num_epochs":2500, "dop":0.1, "inv_temp":2.5}
+                                {"pretrain_num_epochs":50, "train_num_epochs":2500, "dop":0.1, "inv_temp":2.5}
                                
                                 ]
     # CHANGE FOLDER_NAME

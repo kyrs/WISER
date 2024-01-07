@@ -3,7 +3,7 @@ import torch
 from scipy.stats import mode
 
 def LabelPred(prob, class_0_th, class_1_th):
-    # print(prob)
+    print(prob)
     if prob <  class_0_th:
         return 0 
     if prob >  class_1_th:
@@ -18,7 +18,7 @@ def MajorityVote(row):
         return -1
     else:
         return mode(row[row!=-1]).mode[0]
-def select_data(index_dict_list, class_0_th=0.3, class_1_th = 0.7, budget=0.8, K = 20):
+def select_data(index_dict_list, class_0_th=0.49, class_1_th = 0.55, budget=0.8, K = 20):
     ## selecting the data points for downstream training
     fet_dict = {}
     label_dict = {}

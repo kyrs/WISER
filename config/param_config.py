@@ -11,7 +11,7 @@ subset_selection_flag = True
 
 seed = 2020
 # seed = 42
-folder_name = "logs/exp_subset_best_seeded_coverage_tune"
+folder_name = "logs/exp_subset_best_seeded_coverage_tune_1"
 assert(not graphLoader)
 device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 # eff_drug_list = ['fu', 'tem', 'gem', 'cis', 'sor']
