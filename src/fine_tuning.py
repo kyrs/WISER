@@ -1,23 +1,19 @@
 from src.evaluation_utils import evaluate_target_classification_epoch, model_save_check, predict_target_classification,evaluate_unlabeled_tcga_classification_epoch
 from collections import defaultdict
 from itertools import chain
-from src.mlp import MLP, geo_MLP
+from src.mlp import MLP
 from src.encoder_decoder_final import  EncoderDecoder_basis
 import os
 import torch
 import torch.nn as nn
 
 
-def classification_train_step(model, batch, loss_fn, device, optimizer, history, graphLoader, scheduler=None, clip=None):
+def classification_train_step(model, batch, loss_fn, device, optimizer, history,  scheduler=None, clip=None):
     model.zero_grad()
     model.train()
 
-    if not graphLoader:
-        x = batch[0].to(device)
-        y = batch[1].to(device)
-    else:
-        x = batch.to(device)
-        y = batch["label"].to(device)
+    x = batch[0].to(device)
+    y = batch[1].to(device)
        
     ## NOTE : check batch size for all the batch process 
     loss = loss_fn(model(x)[0], y.double().unsqueeze(1))
@@ -41,7 +37,6 @@ def fine_tune_encoder_basis(encoder, basis_vec,  train_dataloader, val_dataloade
                       break_flag=False,
                       test_df=None,
                       unlabeled_tcga_dataloader=None,
-                      graphLoader=True,
                       subset_selection_flag = False,
                       **kwargs):
     
@@ -76,25 +71,21 @@ def fine_tune_encoder_basis(encoder, basis_vec,  train_dataloader, val_dataloade
                                                                             batch=batch,
                                                                             loss_fn=classification_loss,
                                                                             device=kwargs['device'],
-                                                                            graphLoader=graphLoader,
                                                                             optimizer=target_classification_optimizer,
                                                                             history=target_classification_train_history)
         target_classification_eval_train_history = evaluate_target_classification_epoch(classifier=target_classifier,
                                                                                         dataloader=train_dataloader,
                                                                                         device=kwargs['device'],
-                                                                                        graphLoader=graphLoader,
                                                                                         history=target_classification_eval_train_history)
         target_classification_eval_val_history = evaluate_target_classification_epoch(classifier=target_classifier,
                                                                                       dataloader=val_dataloader,
                                                                                       device=kwargs['device'],
-                                                                                      graphLoader=graphLoader,
                                                                                       history=target_classification_eval_val_history)
 
         if test_dataloader is not None:
             target_classification_eval_test_history = evaluate_target_classification_epoch(classifier=target_classifier,
                                                                                            dataloader=test_dataloader,
                                                                                            device=kwargs['device'],
-                                                                                           graphLoader=graphLoader,
                                                                                            history=target_classification_eval_test_history)
         save_flag, stop_flag = model_save_check(history=target_classification_eval_val_history,
                                                 metric_name=metric_name,
@@ -143,6 +134,6 @@ def fine_tune_encoder_basis(encoder, basis_vec,  train_dataloader, val_dataloade
         return target_classifier, (target_classification_train_history, target_classification_eval_train_history,
                                target_classification_eval_val_history, target_classification_eval_test_history)
     else:
-        fetInfoDict = evaluate_unlabeled_tcga_classification_epoch(classifier=target_classifier, dataloader = unlabeled_tcga_dataloader, device=kwargs['device'], graphLoader=graphLoader)
+        fetInfoDict = evaluate_unlabeled_tcga_classification_epoch(classifier=target_classifier, dataloader = unlabeled_tcga_dataloader, device=kwargs['device'])
         return  target_classifier, fetInfoDict, (target_classification_train_history, target_classification_eval_train_history,
                                target_classification_eval_val_history, target_classification_eval_test_history)

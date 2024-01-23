@@ -71,13 +71,37 @@ def fet_ranking(feature_tensor, pseudo_labels, featureList, drugProcessed, sigTe
     lenFet = len(featureList)
     
     if drugProcessed in drug_abbv:
-        sig_kg_gene_list = drug_gene_inter_dict[drug_abbv[drugProcessed]]
-        model  = SelectFromModel(clf, prefit=True, threshold=-np.inf, max_features = len(sig_kg_gene_list)) # details of selection https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html
-        selectFet = model.transform(np.array(featureList).reshape(1, lenFet))
-        selectFet = np.squeeze(selectFet)
-        common_gene = set(sig_kg_gene_list) & set(selectFet.ravel().tolist())
-        missed_selected  = set(selectFet.ravel().tolist()) - set(sig_kg_gene_list)
-        missed_signif = set(sig_kg_gene_list) - set(selectFet.ravel().tolist())
-        print(f"drug : {drugProcessed} : common/ selected {(len(common_gene)/len(selectFet)*100)}%  selected/sig {(len(common_gene)/len(sig_kg_gene_list)*100)}% missed/selected  {(len(missed_selected)/len(selectFet)*100)}% ")
-    else:
-        pass
+    #     sig_kg_gene_list = drug_gene_inter_dict[drug_abbv[drugProcessed]]
+    #     # model  = SelectFromModel(clf, prefit=True, threshold=-np.inf, max_features = len(sig_kg_gene_list)) # details of selection https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html
+    #     selectFet = model.transform(np.array(featureList).reshape(1, lenFet))
+    #     selectFet = np.squeeze(selectFet)
+    #     common_gene = set(sig_kg_gene_list) & set(selectFet.ravel().tolist())
+    #     missed_selected  = set(selectFet.ravel().tolist()) - set(sig_kg_gene_list)
+    #     missed_signif = set(sig_kg_gene_list) - set(selectFet.ravel().tolist())
+    #     print(f"drug : {drugProcessed} : common/ selected {(len(common_gene)/len(selectFet)*100)}%  selected/sig {(len(common_gene)/len(sig_kg_gene_list)*100)}% missed/selected  {(len(missed_selected)/len(selectFet)*100)}% ")
+    # else:
+    #     pass
+        sig_kg_gene_dict = drug_gene_inter_dict[drug_abbv[drugProcessed]]
+        model_mean  = SelectFromModel(clf, prefit=True, threshold="mean") # details of selection https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html
+        model_median  = SelectFromModel(clf, prefit=True, threshold="median")
+        selectFet_mean = model_mean.transform(np.array(featureList).reshape(1, lenFet))
+        selectFet_median = model_median.transform(np.array(featureList).reshape(1, lenFet))
+        
+        selectFet_mean = np.squeeze(selectFet_mean)
+        selectFet_median = np.squeeze(selectFet_median)
+        print(f"feature list : {len(featureList)}")
+        assert(len(set(sig_kg_gene_dict["sig"])- set(featureList))==0)
+        assert(len(set(sig_kg_gene_dict["un_sig"])- set(featureList))==0)
+        
+        TP_mean = set(sig_kg_gene_dict["sig"]) & set(selectFet_mean)
+        TN_mean = set(sig_kg_gene_dict["un_sig"]) & (set(featureList) - set(selectFet_mean)) 
+        FP_mean = set(selectFet_mean) & set(sig_kg_gene_dict["un_sig"])
+        FN_mean = (set(featureList) - set(selectFet_mean)) & set(sig_kg_gene_dict["sig"])
+
+        TP_median = set(sig_kg_gene_dict["sig"]) & set(selectFet_median)
+        TN_median = set(sig_kg_gene_dict["un_sig"]) & (set(featureList) - set(selectFet_median))
+        FP_median = set(selectFet_median) & set(sig_kg_gene_dict["un_sig"])
+        FN_median = (set(featureList) - set(selectFet_median)) & set(sig_kg_gene_dict["sig"])
+
+        print(f" drug : {drugProcessed} TP(mean) : {len(TP_mean)} TN(mean) : {len(TN_mean)} FP(mean) : {len(FP_mean)} FN(mean) : {len(FN_mean)} posGDIC : {len(set(sig_kg_gene_dict['sig']))}  negGDISC : {len(set(sig_kg_gene_dict['un_sig']))} posPred : {len(set(selectFet_mean))} negPred :{len(featureList)-len(set(selectFet_mean))}")
+        print(f" drug : {drugProcessed} TP(median) : {len(TP_median)} TN(median) : {len(TN_median)} FP(median) : {len(FP_median)} FN(median) : {len(FN_median)} posGDIC : {len(set(sig_kg_gene_dict['sig']))}  negGDISC : {len(set(sig_kg_gene_dict['un_sig']))} posPred : {len(set(selectFet_median))} negPred :{len(featureList)-len(set(selectFet_median))}")

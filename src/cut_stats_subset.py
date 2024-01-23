@@ -18,7 +18,7 @@ def MajorityVote(row):
         return -1
     else:
         return mode(row[row!=-1]).mode[0]
-def select_data(index_dict_list, class_0_th = 0.468445, class_1_th = 0.514645, budget=0.7, K = 20):
+def select_data(index_dict_list, class_0_th = 0.3, class_1_th = 0.7, budget=0.7, K = 20):
     ## selecting the data points for downstream training
     fet_dict = {}
     label_dict = {}

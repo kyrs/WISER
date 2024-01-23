@@ -2,13 +2,13 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from src.base_ae import BaseAE
-from src.mlp import MLP, geo_MLP
+from src.mlp import MLP
 from src.types_ import *
 from typing import List                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 from torch_geometric.utils import unbatch
 class DSNBasisAE(BaseAE):
-    def __init__(self, shared_encoder, decoder, basis_vec,  num_geo_layer, input_dim: int, latent_dim: int, testing_drug_len : int, inv_temp : int = 1, pseudo_conf_threshold = 0.9, alpha: float = 1.0, beta : float = 1.0, gamma : float = 1.0, eta : float = 1.0,
-                 basis_weight = torch.ones(1), graphLoader=False,  psuedo_label_flag = False, psuedo_label_update_cnt = 50,  hidden_dims: List = None, dop: float = 0.1, noise_flag: bool = False, norm_flag: bool = False, cns_basis_label_loss : bool = True, cosine_flag: bool = False,
+    def __init__(self, shared_encoder, decoder, basis_vec,  num_geo_layer, input_dim: int, latent_dim: int, testing_drug_len : int, inv_temp : int = 1, alpha: float = 1.0, beta : float = 1.0, gamma : float = 1.0, eta : float = 1.0,
+                 basis_weight = torch.ones(1), hidden_dims: List = None, dop: float = 0.1, noise_flag: bool = False, norm_flag: bool = False, cns_basis_label_loss : bool = True, cosine_flag: bool = False,
                  **kwargs) -> None:
 
         super(DSNBasisAE, self).__init__()
@@ -24,15 +24,10 @@ class DSNBasisAE(BaseAE):
         self.inv_temp = inv_temp
         self.testing_drug_len = testing_drug_len
 
-        self.psuedo_label_flag = psuedo_label_flag
-        self.psuedo_label_update_cnt = psuedo_label_update_cnt
-        self.pseudo_conf_threshold = pseudo_conf_threshold
         self.cns_basis_label_loss = cns_basis_label_loss
         
         self.cosine_flag = cosine_flag
         self.num_geo_layer = num_geo_layer
-
-        self.graphLoader = graphLoader
 
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256, 512]
@@ -64,31 +59,19 @@ class DSNBasisAE(BaseAE):
         #     )
         # modules.append(nn.Dropout(self.dop))
         # modules.append(nn.Linear(hidden_dims[-1], latent_dim, bias=True))
-
-        if not self.graphLoader :    
-            self.private_encoder =  MLP(input_dim=input_dim,
+    
+        self.private_encoder =  MLP(input_dim=input_dim,
                                     output_dim=latent_dim,
                                     hidden_dims=hidden_dims,
                                     dop=self.dop)
-        else:
-            self.private_encoder = geo_MLP(
-                                input_dim=input_dim,
-                                output_dim=latent_dim,
-                                hidden_dims=hidden_dims,
-                                dop=dop,
-                                num_geo_layer = num_geo_layer
-                            )
+        
             
             
         self.softmax = nn.Softmax(dim = -1)
 
     def p_encode(self, fetInput) -> Tensor:
         if self.noise_flag and self.training:
-            if not self.graphLoader:
-                latent_code = self.private_encoder(fetInput + torch.randn_like(fetInput, requires_grad=False) * 0.1)
-            else:
-                fetInput["gene"] = fetInput["gene"] + torch.randn_like(fetInput["gene"], requires_grad=False) * 0.1
-                latent_code = self.private_encoder(fetInput)
+            latent_code = self.private_encoder(fetInput + torch.randn_like(fetInput, requires_grad=False) * 0.1)
         else:
             latent_code = self.private_encoder(fetInput)
 
@@ -141,11 +124,9 @@ class DSNBasisAE(BaseAE):
             s_projected_val = self.softmax(s_project_code *self.inv_temp)
 
 
-        psuedo_labels = (s_projected_val >= self.pseudo_conf_threshold) * torch.ones_like(s_projected_val)
-        psuedo_labels = psuedo_labels.long().detach()
 
         final_code = torch.matmul(s_projected_val, weighted_basis)
-        return torch.cat((p_latent_code, final_code), dim=1), final_code, s_latent_code, psuedo_labels 
+        return torch.cat((p_latent_code, final_code), dim=1), final_code, s_latent_code 
     
     
     def decode(self, z) -> Tensor:
@@ -153,8 +134,8 @@ class DSNBasisAE(BaseAE):
         return outputs
     
     def forward(self, fetInput, **kwargs) -> List[Tensor]:
-        z_concat, final_code, s_latent_code, psuedo_labels = self.encode(fetInput)
-        return [fetInput, self.decode(z_concat), final_code, s_latent_code, z_concat, psuedo_labels]
+        z_concat, final_code, s_latent_code = self.encode(fetInput)
+        return [fetInput, self.decode(z_concat), final_code, s_latent_code, z_concat]
     
     def loss_function(self, batch, target) -> dict:
         output = self.forward(batch)
@@ -163,7 +144,6 @@ class DSNBasisAE(BaseAE):
         final_code = output[2]
         s_latent_code = output[3]
         z_concat = output[4]
-        psuedo_labels = output[5]
         # loss_projection to be ignored when aligning CCLE and TCGA
 
         weighted_basis = self.basis_vec.weight 
@@ -178,9 +158,6 @@ class DSNBasisAE(BaseAE):
         
         
         
-        
-        assert (self.psuedo_label_flag != self.cns_basis_label_loss) or ((self.psuedo_label_flag == False) and (self.cns_basis_label_loss == False))
-
         if self.cns_basis_label_loss:
             pos_cosine_dis = (target==1) * (1-torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T))
             neg_cosine_dis = (target==0) * (1-torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T))
@@ -188,27 +165,13 @@ class DSNBasisAE(BaseAE):
             negCos = neg_cosine_dis.mean() /  ((target==0).sum())
             # print(posCos, negCos)
             basis_label_loss = torch.max( posCos-negCos+0.2, torch.tensor(0))
-            # basis_label_loss = (target == 1) * torch.square(torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T) - 1)
-            # basis_label_loss = torch.sum(basis_label_loss, 1).mean(0) 
-            # print (basis_label_loss)
-        if self.psuedo_label_flag:
-            # basis_label_loss = 0
-            basis_label_loss = (psuedo_labels == 1) * torch.square(torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T) - 1)
-            basis_label_loss = torch.sum(basis_label_loss, 1).mean(0)
 
-
-        
         
         assert(z_concat.shape[1] == 2 * self.latent_dim )    
         p_z = z_concat[:, :z_concat.shape[1] // 2]
         s_z = z_concat[:, z_concat.shape[1] // 2:]
-        #NOTE : check the dimension of the  Z_concat shape    
-        if self.graphLoader:
-            out = unbatch(fetInput["gene"]["x"],fetInput["gene"].batch)
-            out = torch.cat(out, dim =-1)
-            recons_loss = F.mse_loss(out.T, recons)
-        else:
-            recons_loss = F.mse_loss(fetInput, recons)
+
+        recons_loss = F.mse_loss(fetInput, recons)
         
         
 
@@ -233,9 +196,9 @@ class DSNBasisAE(BaseAE):
             assert(False)
         
         # print(f'alpha : {self.alpha} beta : {self.beta} gamma : {self.gamma} eta : {self.eta}')
-        if(self.cns_basis_label_loss or self.psuedo_label_flag):
+        if(self.cns_basis_label_loss):
             loss = recons_loss + self.alpha * ortho_loss + self.beta * loss_commit + self.gamma * loss_commit_reverse + self.eta * basis_label_loss
-            print(f'recons_loss : {recons_loss} ortho_loss : {ortho_loss} commit : {loss_commit} loss_commit_reverse : {loss_commit_reverse} loss_basis_label : {basis_label_loss} cns_basis : {self.cns_basis_label_loss} pseudo label : {self.psuedo_label_flag}')
+            print(f'recons_loss : {recons_loss} ortho_loss : {ortho_loss} commit : {loss_commit} loss_commit_reverse : {loss_commit_reverse} loss_basis_label : {basis_label_loss} cns_basis : {self.cns_basis_label_loss}')
             return {'loss': loss, 'recons_loss': recons_loss, 'ortho_loss': ortho_loss, "commit" : loss_commit, "loss_commit_reverse": loss_commit_reverse, "loss_basis_label" : basis_label_loss}
         else:
             loss = recons_loss + self.alpha * ortho_loss + self.beta * loss_commit + self.gamma * loss_commit_reverse

@@ -83,8 +83,7 @@ def main(args, update_params_dict):
     ccle_only = param_config.ccle_only   
     folder_name = param_config.folder_name
     seed = param_config.seed
-    graphLoader = param_config.graphLoader
-
+    
     print(f"running experiment with CCLE only : {ccle_only} cosine flag : {cosine_flag}")
     eff_drug_list = param_config.eff_drug_list
     test_data_index  = param_config.test_data_index
@@ -125,8 +124,7 @@ def main(args, update_params_dict):
         drug_list = basis_drug_list,
         batch_size=training_params['unlabeled']['batch_size'],
         ccle_only= ccle_only, 
-        seed = seed,
-        graphLoader = graphLoader
+        seed = seed
     )
 
     # start Alignment  training
@@ -134,7 +132,7 @@ def main(args, update_params_dict):
     encoder, historys, basis_vec,  inv_temp = train_fn(s_dataloaders=s_dataloaders,
                                  t_dataloaders=t_dataloaders, ccle_only = ccle_only, 
                                  drug_dim = len(basis_drug_list), cosine_flag = cosine_flag, 
-                                 graphLoader=graphLoader, **wrap_training_params(training_params, 
+                                  **wrap_training_params(training_params, 
                                  type='unlabeled'))
     
     if args.retrain_flag:
@@ -162,7 +160,6 @@ def main(args, update_params_dict):
             days_threshold=args.days_thres,
             pdtc_flag=args.pdtc_flag,
             n_splits=args.n,
-            graphLoader=graphLoader,
             return_unlabeled_tcga_flag = param_config.subset_selection_flag
             )
 
@@ -184,8 +181,7 @@ def main(args, update_params_dict):
                 seed=fold_count,
                 unlabeled_tcga_dataloader = unlabeled_tcga_dataloader, 
                 normalize_flag=args.norm_flag,
-                metric_name=args.metric,
-                graphLoader=graphLoader, 
+                metric_name=args.metric, 
                 task_save_folder=task_save_folder,
                 subset_selection_flag = param_config.subset_selection_flag,
                 **wrap_training_params(training_params, type='labeled')
@@ -225,7 +221,6 @@ def main(args, update_params_dict):
                     days_threshold=args.days_thres,
                     pdtc_flag=args.pdtc_flag,
                     n_splits=args.n,
-                    graphLoader=graphLoader,
                     return_unlabeled_tcga_flag = False
                     )
                     ft_evaluation_metrics = defaultdict(list)
@@ -241,8 +236,7 @@ def main(args, update_params_dict):
                             seed=fold_count,
                             unlabeled_tcga_dataloader = unlabeled_tcga_dataloader, 
                             normalize_flag=args.norm_flag,
-                            metric_name=args.metric,
-                            graphLoader=graphLoader, 
+                            metric_name=args.metric, 
                             task_save_folder=task_save_folder,
                             subset_selection_flag = False,
                             **wrap_training_params(training_params, type='labeled')
@@ -341,9 +335,9 @@ if __name__ == '__main__':
     update_params_dict_list = [
                             #     Fu best hyperparameter
                                 # {"pretrain_num_epochs":100, "train_num_epochs":1000, "dop":0.1, "inv_temp":100},
-                                # {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 }, 
+                                {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 }, 
                             #     GEM-best hyperparameter
-                                {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
+                                # {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
                                 # {"pretrain_num_epochs":100, "train_num_epochs":2500, "dop":0.0, "inv_temp":0.001 }
 
                             #     TEM-best hyperparameter

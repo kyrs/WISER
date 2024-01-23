@@ -5,7 +5,7 @@ configuration file includes all related datasets
 print("Please change config files .. ")
 gene_gene_relation = "/home/ece/hdd/NUS-IISC/aux_data_codebase/data/gene_gene_interaction.json"
 drug_gene_relation = "/home/ece/hdd/NUS-IISC/aux_data_codebase/data/morganRep.json"
-sig_gene_json = "/home/ece/hdd/NUS-IISC/aux_data_codebase/data/sigGeneWithAliasInUq1000.json"
+sig_gene_json = "/home/ece/hdd/NUS-IISC/aux_data_codebase/data/sigGeneWithAliasInUq1000Details.json"
 # root_data_folder = '../data/'
 root_data_folder = "/home/ece/hdd/NUS-IISC/CODE-AE/data/" # NOTE : REMOVE THE ADD
 

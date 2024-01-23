@@ -4,11 +4,10 @@ from itertools import chain
 from src.dsn_ae import DSNAE
 from src.evaluation_utils import *
 from src.mlp import MLP
-from torch_geometric.utils import unbatch
 
 
 
-def eval_basis_dsnae_epoch(model, data_loader, device, graphLoader, history):
+def eval_basis_dsnae_epoch(model, data_loader, device, history):
     """
 
     :param model:
@@ -23,14 +22,10 @@ def eval_basis_dsnae_epoch(model, data_loader, device, graphLoader, history):
     
     ##NOTE: doule check data loader
     for x_batch in data_loader:
-        if not graphLoader:
-            X_batch = x_batch[0].to(device)
-            T_batch = x_batch[1].to(device)
-        else:
-            X_batch = x_batch.to(device)
-            label = x_batch["label"]
-            T_batch = label.to(device)
-
+        
+        X_batch = x_batch[0].to(device)
+        T_batch = x_batch[1].to(device)
+        
         with torch.no_grad():
             loss_dict = model.loss_function(X_batch, T_batch)
             for k, v in loss_dict.items():
@@ -42,25 +37,18 @@ def eval_basis_dsnae_epoch(model, data_loader, device, graphLoader, history):
 
 
 
-def basis_dsn_ae_train_step(s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, history, graphLoader, scheduler=None):
+def basis_dsn_ae_train_step(s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, history, scheduler=None):
     s_dsnae.zero_grad()
     t_dsnae.zero_grad()
     s_dsnae.train()
     t_dsnae.train()
 
-    if not graphLoader:
-        s_x = s_batch[0].to(device)
-        t_x = t_batch[0].to(device)
+    
+    s_x = s_batch[0].to(device)
+    t_x = t_batch[0].to(device)
 
-        s_target = s_batch[1].to(device)
-        t_target = t_batch[1].to(device)
-    else:
-        s_x = s_batch.to(device)
-        s_target = s_batch["label"].to(device)
-        
-        t_x = t_batch.to(device)
-        t_target = t_batch["label"].to(device)
-        ## NOTE: double check the label of source and target 
+    s_target = s_batch[1].to(device)
+    t_target = t_batch[1].to(device)
         
 
     

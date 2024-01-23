@@ -47,19 +47,15 @@ def eval_ae_epoch(model, data_loader, device, history):
     return history
 
 
-def evaluate_target_classification_epoch(classifier, dataloader, device, history, graphLoader):
+def evaluate_target_classification_epoch(classifier, dataloader, device, history):
     y_truths = np.array([])
     y_preds = np.array([])
     classifier.eval()
 
     for batch in dataloader:
-        if not graphLoader:
-            x_batch = batch[0]
-            y_batch = batch[1]
-        else:
-            ## NOTE : vrify batch size
-            x_batch = batch 
-            y_batch = batch["label"]
+        
+        x_batch = batch[0]
+        y_batch = batch[1]
         
         x_batch = x_batch.to(device)
         y_batch = y_batch.to(device)
@@ -79,7 +75,7 @@ def evaluate_target_classification_epoch(classifier, dataloader, device, history
     return history
 
 
-def evaluate_unlabeled_tcga_classification_epoch(classifier, dataloader, device, graphLoader):
+def evaluate_unlabeled_tcga_classification_epoch(classifier, dataloader, device):
     pseudo_label_info = {}
     classifier.eval()
     cnt = 0
@@ -87,14 +83,10 @@ def evaluate_unlabeled_tcga_classification_epoch(classifier, dataloader, device,
         for batch in dataloader:
             print(f"unlabelled cnt :{cnt}")
             cnt+=1
-            if not graphLoader:
-                x_batch = batch[0]
-                idx_batch = batch[1]
-            else:
-                ## NOTE : vrify batch size
-                x_batch = batch 
-                
-            
+
+            x_batch = batch[0]
+            idx_batch = batch[1]
+
             x_batch = x_batch.to(device)
             with torch.no_grad():
                 logit, fet_batch =  classifier(x_batch)

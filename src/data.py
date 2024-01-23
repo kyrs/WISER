@@ -27,79 +27,7 @@ def load_json(fileName):
             listDict.append(dictVal)
     return listDict
 
-def undirected_gene_coord_mat(listGeneDict, fetColList):
-    ## generate the undirected coord matrix for graph level processing
-    cntStatus = set()
-    xCoord = []
-    yCoord = []
-    for val in listGeneDict:
-        relationDict = val 
-        relation = relationDict["relation"]
-        geneX = relationDict["geneX"]
-        geneY = relationDict["geneY"]
-        out1  = list(fetColList).index(geneX)
-        out2 =  list(fetColList).index(geneY)
-        ind = (out1,out2)
-        revInd = (out2, out1)   
-        if ind not in cntStatus:
-            cntStatus.add(ind)
-            xCoord.append(out1)
-            yCoord.append (out2)
-        ## undirected graph , handling reverse cord
-        if revInd not in cntStatus:
-            cntStatus.add(revInd)
-            xCoord.append(out2)
-            yCoord.append(out1)
-
-    coordIndex = np.vstack([xCoord, yCoord])
-    return coordIndex
-
-def directed_drug_fet_coord_mat(listDrugDict, fetColList):
-    dictDrugMorgan = {}
-    for dictVal in listDrugDict:
-        if dictVal["drug"] not in dictDrugMorgan:
-            dictDrugMorgan[dictVal["drug"]] = [{"gene": dictVal["gene"], "morgan_rep":dictVal["morgan_rep"]}]
-        else:
-            dictDrugMorgan[dictVal["drug"]].append({"gene": dictVal["gene"], "morgan_rep":dictVal["morgan_rep"]})
-    
-
-    drugList = sorted(dictDrugMorgan.keys()) ## sorting is essential to maintain order with labeled dataloader
-    npFetList = []
-    drug_gene_edge_x = []
-    drug_gene_edge_y = []
-
-    for drug in drugList:
-        rep  = dictDrugMorgan[drug][0]["morgan_rep"]
-        npFetList.append(rep)
-        for index in range(len(dictDrugMorgan[drug])):
-            gene = dictDrugMorgan[drug][index]["gene"]
-            ## NOTE : CHECK each line of code
-            geneId = list(fetColList).index(gene)
-            drugId = drugList.index(drug)
-            drug_gene_edge_x.append(drugId)
-            drug_gene_edge_y.append(geneId)
-
-    drugRep = np.vstack(npFetList)
-    drug_gene_inter = np.vstack([drug_gene_edge_x, drug_gene_edge_y])  
-    assert(drugRep.shape[0]==len(drugList)) ## ensure gene ordering is correct 
-    assert(np.max(drug_gene_edge_x)==len(drugList)-1)
-    return drugRep, drug_gene_inter, drugList
-
-
-def graphMetaData(npFeature, npLabel, gene_gene_inter, drug_gene_inter, drug_fet , colFet):
-    graphList = []
-    assert(npFeature.shape[0] == npLabel.shape[0])
-    for fet, label in zip(npFeature, npLabel):
-        trainObj = HeteroData(gene={"x" : torch.tensor(fet).unsqueeze(1).type(torch.float), "num_nodes" :len(fet)},
-                     drug={"x":torch.tensor(drug_fet).type(torch.float), "num_nodes" :len(drug_fet)}, 
-                     label=torch.tensor(label).unsqueeze(0),
-                     drug__inter__gene={"edge_index" :torch.tensor(drug_gene_inter)}, 
-                     gene__inter__gene={"edge_index" : torch.tensor(gene_gene_inter)})
-        graphList.append(trainObj)
-    return graphList
-
-
-def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_threshold=None, tcga_cancer_type=None, graphLoader=True, return_unlabeled_tcga_flag=True):
+def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_threshold=None, tcga_cancer_type=None, return_unlabeled_tcga_flag=True):
     if tcga_cancer_type is not None:
         raise NotImplementedError("Only support pan-cancer")
 
@@ -164,30 +92,21 @@ def get_tcga_labeled_dataloaders(gex_features_df, drug, batch_size, days_thresho
     # new_drug_label = np.append(drug_label, recist_drug_labels)
     # *******************************************************************
 
-    if not graphLoader:
-        labeled_tcga_dateset = TensorDataset(
-            torch.from_numpy(labeled_tcga_gex_feature_df.values.astype('float32')),
-            torch.from_numpy(drug_label))
+   
+    labeled_tcga_dateset = TensorDataset(
+        torch.from_numpy(labeled_tcga_gex_feature_df.values.astype('float32')),
+        torch.from_numpy(drug_label))
 
-        unlabeled_tcga_dataset = TensorDataset(
-            torch.from_numpy(unlabeled_tcga_df.values.astype('float32')),
-            torch.from_numpy(np.arange(len(unlabeled_tcga_df))) ## define index to track features
-        )
+    unlabeled_tcga_dataset = TensorDataset(
+        torch.from_numpy(unlabeled_tcga_df.values.astype('float32')),
+        torch.from_numpy(np.arange(len(unlabeled_tcga_df))) ## define index to track features
+    )
 
-        labeled_tcga_dataloader = DataLoader(labeled_tcga_dateset,
-                                            batch_size=batch_size,
-                                            shuffle=True)
-        unlabeled_tcga_dataloader = DataLoader(unlabeled_tcga_dataset,batch_size=batch_size)
-    else:
-        listGeneRel = load_json(data_config.gene_gene_relation)
-        listDrugRel = load_json(data_config.drug_gene_relation)
-        fetColList = gex_features_df.columns 
-        # print(fetColList)
-        gene_gene_inter = undirected_gene_coord_mat(listGeneDict = listGeneRel, fetColList = fetColList)
-        drugFet, drug_gene_inter, drug_list_unsup = directed_drug_fet_coord_mat(listDrugDict = listDrugRel, fetColList = fetColList)
-        assert(len(gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
-        graph_node_list = graphMetaData(npFeature =labeled_tcga_gex_feature_df.values.astype('float32') , npLabel = drug_label, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
-        labeled_tcga_dataloader = geo_dataLoader(graph_node_list, batch_size=batch_size, shuffle=True)
+    labeled_tcga_dataloader = DataLoader(labeled_tcga_dateset,
+                                        batch_size=batch_size,
+                                        shuffle=True)
+    unlabeled_tcga_dataloader = DataLoader(unlabeled_tcga_dataset,batch_size=batch_size)
+
     if not return_unlabeled_tcga_flag:
         return labeled_tcga_dataloader, None, None
     else:
@@ -334,7 +253,7 @@ def get_ccle_labeled_dataloaders(gex_features_df, seed, drug, batch_size, ft_fla
 
 
 def get_ccle_labeled_dataloader_generator(gex_features_df, drug, batch_size, seed=2020, threshold=None,merged_tcga_add_data=None,
-                                          measurement='AUC', n_splits=5, graphLoader=True):
+                                          measurement='AUC', n_splits=5):
     measurement = 'Z_SCORE'
     threshold = 0.0
     drugs_to_keep = [drug.lower()]
@@ -385,67 +304,46 @@ def get_ccle_labeled_dataloader_generator(gex_features_df, drug, batch_size, see
 
     s_kfold = StratifiedKFold(n_splits=5, random_state=seed, shuffle=True)
     
-    if graphLoader:
-        fetColList = gex_features_df.columns
-        # print(fetColList)
-        listGeneRel = load_json(data_config.gene_gene_relation)
-        listDrugRel = load_json(data_config.drug_gene_relation)
-        gene_gene_inter = undirected_gene_coord_mat(listGeneDict = listGeneRel, fetColList = fetColList)
-        drugFet, drug_gene_inter, drug_list_unsup = directed_drug_fet_coord_mat(listDrugDict = listDrugRel, fetColList = fetColList)
-    else:
-        pass
     
     for train_index, test_index in s_kfold.split(ccle_labeled_feature_df.values, ccle_labels.values):
         train_labeled_ccle_df, test_labeled_ccle_df = ccle_labeled_feature_df.values[train_index], \
                                                       ccle_labeled_feature_df.values[test_index]
         train_ccle_labels, test_ccle_labels = ccle_labels.values[train_index], ccle_labels.values[test_index]
+        if merged_tcga_add_data is not None:
+            tcga_data, tcga_label = merged_tcga_add_data
+            print ("merging TCGA data")
+            merged_ccle_train_fet = torch.vstack([torch.from_numpy(train_labeled_ccle_df.astype('float32')), tcga_data])
+            print(torch.from_numpy(train_ccle_labels).shape, tcga_label.shape)
+            merged_ccle_train_label = torch.cat((torch.from_numpy(train_ccle_labels), tcga_label),0)
+            
+            train_labeled_ccle_dateset = TensorDataset(
+                merged_ccle_train_fet,
+                merged_ccle_train_label)
 
+            test_labeled_ccle_df = TensorDataset(
+                torch.from_numpy(test_labeled_ccle_df.astype('float32')),
+                torch.from_numpy(test_ccle_labels))
         
-        if not graphLoader:
-            if merged_tcga_add_data is not None:
-                tcga_data, tcga_label = merged_tcga_add_data
-                print ("merging TCGA data")
-                merged_ccle_train_fet = torch.vstack([torch.from_numpy(train_labeled_ccle_df.astype('float32')), tcga_data])
-                print(torch.from_numpy(train_ccle_labels).shape, tcga_label.shape)
-                merged_ccle_train_label = torch.cat((torch.from_numpy(train_ccle_labels), tcga_label),0)
-                
-                train_labeled_ccle_dateset = TensorDataset(
-                    merged_ccle_train_fet,
-                    merged_ccle_train_label)
-
-                test_labeled_ccle_df = TensorDataset(
-                    torch.from_numpy(test_labeled_ccle_df.astype('float32')),
-                    torch.from_numpy(test_ccle_labels))
-            
-            else:
-                print("merged data detail ")
-                train_labeled_ccle_dateset = TensorDataset(
-                    torch.from_numpy(train_labeled_ccle_df.astype('float32')),
-                    torch.from_numpy(train_ccle_labels))
-
-                test_labeled_ccle_df = TensorDataset(
-                    torch.from_numpy(test_labeled_ccle_df.astype('float32')),
-                    torch.from_numpy(test_ccle_labels))
-
-            train_labeled_ccle_dataloader = DataLoader(train_labeled_ccle_dateset,
-                                                    batch_size=batch_size,
-                                                    shuffle=True)
-
-            test_labeled_ccle_dataloader = DataLoader(test_labeled_ccle_df,
-                                                    batch_size=batch_size,
-                                                  shuffle=True)
         else:
-            
-            assert(len(gex_features_df.columns)==1426) ## to ensure consistency in unsupervised and supervised dataloaders
-            train_node_list = graphMetaData(npFeature = train_labeled_ccle_df.astype('float32') , npLabel = train_ccle_labels, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
-            # print(train_node_list)
-            train_labeled_ccle_dataloader = geo_dataLoader(train_node_list,batch_size=batch_size, shuffle=True)
+            print("merged data detail ")
+            train_labeled_ccle_dateset = TensorDataset(
+                torch.from_numpy(train_labeled_ccle_df.astype('float32')),
+                torch.from_numpy(train_ccle_labels))
 
-            ### test data loader 
-            test_node_list = graphMetaData(npFeature = test_labeled_ccle_df.astype('float32') , npLabel = test_ccle_labels, gene_gene_inter = gene_gene_inter, drug_gene_inter = drug_gene_inter, drug_fet = drugFet , colFet=gex_features_df.columns)
-            test_labeled_ccle_dataloader = geo_dataLoader(test_node_list, batch_size=batch_size, shuffle=True)
+            test_labeled_ccle_df = TensorDataset(
+                torch.from_numpy(test_labeled_ccle_df.astype('float32')),
+                torch.from_numpy(test_ccle_labels))
+
+        train_labeled_ccle_dataloader = DataLoader(train_labeled_ccle_dateset,
+                                                batch_size=batch_size,
+                                                shuffle=True)
+
+        test_labeled_ccle_dataloader = DataLoader(test_labeled_ccle_df,
+                                                batch_size=batch_size,
+                                                shuffle=True)
+    
+        
             
-            ## NOTE : double verify the ordering of train and test data
         yield train_labeled_ccle_dataloader, test_labeled_ccle_dataloader
 
 
@@ -498,7 +396,7 @@ def get_labeled_dataloader_generator(gex_features_df, drug, seed, batch_size, cc
                                      days_threshold=None,
                                      pdtc_flag=False,
                                      merged_tcga_add_data = None,
-                                     n_splits=5, graphLoader=True, return_unlabeled_tcga_flag=False):
+                                     n_splits=5,  return_unlabeled_tcga_flag=False):
     """
     sensitive (responder): 1
     resistant (non-responder): 0
@@ -525,25 +423,25 @@ def get_labeled_dataloader_generator(gex_features_df, drug, seed, batch_size, cc
                                                                               threshold=threshold,
                                                                               merged_tcga_add_data = merged_tcga_add_data,
                                                                               measurement=ccle_measurement,
-                                                                              n_splits=n_splits,
-                                                                              graphLoader=graphLoader)
+                                                                              n_splits=n_splits
+                                                                              )
 
     if pdtc_flag:
         test_labeled_dataloaders = get_pdtc_labeled_dataloaders(drug=drug_name,
                                                                 batch_size=batch_size,
                                                                 threshold=threshold,
-                                                                measurement=ccle_measurement,
-                                                                graphLoader=graphLoader)
+                                                                measurement=ccle_measurement
+                                                                )
     else:
         if drug in ['tgem', 'tfu']:
             test_labeled_dataloaders = get_tcga_preprocessed_labeled_dataloaders(gex_features_df=gex_features_df,
                                                                                  drug=drug[1:],
-                                                                                 batch_size=batch_size, graphLoader=graphLoader)
+                                                                                 batch_size=batch_size)
         else:
             test_labeled_dataloaders, unlabeled_tcga_dataloaders, unlabeled_df = get_tcga_labeled_dataloaders(gex_features_df=gex_features_df,
                                                                     drug=drug_name,
                                                                     batch_size=batch_size,
-                                                                    days_threshold=days_threshold, graphLoader=graphLoader, return_unlabeled_tcga_flag=return_unlabeled_tcga_flag)
+                                                                    days_threshold=days_threshold, return_unlabeled_tcga_flag=return_unlabeled_tcga_flag)
 
             
     for train_labeled_ccle_dataloader, test_labeled_ccle_dataloader in ccle_labeled_dataloader_generator:
@@ -800,25 +698,4 @@ def get_adae_labeled_dataloaders(gex_features_df, seed, batch_size, pos_gender='
             test_labeled_dataloader) if ft_flag else (train_labeled_dataloader, test_labeled_dataloader)
 
 if __name__ == "__main__":
-    # print("Hello world !!")
-    gex_features_df = pd.read_csv(data_config.gex_feature_file, index_col=0)
-    labeled_dataloader_generator = get_labeled_dataloader_generator(
-            gex_features_df=gex_features_df,
-            seed=2023,
-            batch_size=32,
-            drug="fu",
-            ccle_measurement="AUC",
-            threshold=None,
-            days_threshold=None,
-            pdtc_flag=False,
-            n_splits=5,
-            graphLoader=True)
-    
-    for out in labeled_dataloader_generator:
-        print(out)
-        for batch in out[2]:
-            print(batch)
-            print(batch["gene"].batch)
-            print(len(batch["gene"]["x"]), len(batch["gene"].batch), len(batch["label"]))
-            print(unbatch(batch["gene"]["x"], batch["gene"].batch))
-        # print(out)
+    pass

@@ -6,7 +6,7 @@ sys.path.append("../")
 from config import param_config
 from src.dsn_basis_ae_final import DSNBasisAE
 from src.evaluation_utils import *
-from src.mlp import MLP, geo_MLP
+from src.mlp import MLP
 from src.train_code_base import eval_basis_dsnae_epoch, basis_dsn_ae_train_step
 from collections import OrderedDict
 import numpy as np
@@ -33,7 +33,7 @@ def compute_gradient_penalty(critic, real_samples, fake_samples, device):
     return gradient_penalty
 
 
-def critic_dsn_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, history, graphLoader, scheduler=None,
+def critic_dsn_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, history, scheduler=None,
                           clip=None, gp=None):
     critic.zero_grad()
     s_dsnae.zero_grad()
@@ -42,15 +42,10 @@ def critic_dsn_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, op
     t_dsnae.eval()
     critic.train()
 
-    if graphLoader:
-       #NOTE : check the graph structure
-        s_x = s_batch.to(device)
-        t_x = t_batch.to(device)
-    else:
-        s_x = s_batch[0].to(device)
-        t_x = t_batch[0].to(device)
-        pass
 
+    s_x = s_batch[0].to(device)
+    t_x = t_batch[0].to(device)
+    
     s_code = s_dsnae.encode(s_x)[0]
     t_code = t_dsnae.encode(t_x)[0]
     loss = torch.mean(critic(t_code)) - torch.mean(critic(s_code))
@@ -79,7 +74,7 @@ def critic_dsn_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, op
     return history
 
 
-def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, alpha, history, graphLoader,
+def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, optimizer, alpha, history, 
                            scheduler=None):
     critic.zero_grad()
     s_dsnae.zero_grad()
@@ -88,18 +83,12 @@ def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, o
     s_dsnae.train()
     t_dsnae.train()
 
-    if not graphLoader:
-        s_x = s_batch[0].to(device)
-        s_label = s_batch[1].to(device)
-        t_x = t_batch[0].to(device)
-        t_label = t_batch[1].to(device)
-    else:
-        s_x = s_batch.to(device)
-        s_label = s_batch["label"].to(device)
-        t_x = t_batch.to(device)
-        t_label = t_batch["label"].to(device)
-        
     
+    s_x = s_batch[0].to(device)
+    s_label = s_batch[1].to(device)
+    t_x = t_batch[0].to(device)
+    t_label = t_batch[1].to(device)
+        
     t_code = t_dsnae.encode(t_x)[0] ## 0 index is concatenated output in encodes
     # s_dsnae
     print("Generator")
@@ -125,7 +114,7 @@ def gan_dsn_gen_train_step(critic, s_dsnae, t_dsnae, s_batch, t_batch, device, o
     return history
 
 
-def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_flag, graphLoader, **kwargs):
+def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_flag,  **kwargs):
     """
 
     :param s_dataloaders:
@@ -139,19 +128,12 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
     t_train_dataloader = t_dataloaders[0]
     t_test_dataloader = t_dataloaders[1]
 
-    if not graphLoader:
-        shared_encoder = MLP(input_dim=kwargs['input_dim'],
+    
+    shared_encoder = MLP(input_dim=kwargs['input_dim'],
                             output_dim=kwargs['latent_dim'],
                             hidden_dims=kwargs['encoder_hidden_dims'],
                             dop=kwargs['dop']).to(kwargs['device'])
-    else:
-        shared_encoder = geo_MLP(
-                            input_dim=kwargs['input_dim'],
-                            output_dim=kwargs['latent_dim'],
-                            hidden_dims=kwargs['encoder_hidden_dims'],
-                            dop=kwargs['dop'],
-                            num_geo_layer = kwargs["num_geo_layer"]
-                            ).to(kwargs['device'])
+    
     basis_vec = torch.nn.Embedding(drug_dim, kwargs['latent_dim']).to(kwargs['device'])
 
     inv_temp = kwargs['inv_temp']
@@ -173,10 +155,9 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     num_geo_layer = kwargs['num_geo_layer'],
                     cosine_flag = cosine_flag,
                     cns_basis_label_loss = True, 
-                    psuedo_label_flag = False,
-                    pseudo_conf_threshold = 0.7,
+                    
                     norm_flag=kwargs['norm_flag'],
-                    graphLoader = graphLoader
+                    
                     ).to(kwargs['device'])
                     
 
@@ -190,12 +171,10 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                     inv_temp = kwargs['inv_temp'],
                     dop=kwargs['dop'],
                     cosine_flag = cosine_flag,
-                    cns_basis_label_loss = False,
-                    psuedo_label_flag = param_config.pseudo_loss_flag, 
+                    cns_basis_label_loss = False, 
                     num_geo_layer = kwargs['num_geo_layer'],
-                    pseudo_conf_threshold = 0.7,
                     norm_flag=kwargs['norm_flag'],
-                    graphLoader = graphLoader
+                    
                     ).to(kwargs['device'])
    
     confounding_classifier = MLP(input_dim=kwargs['latent_dim'] * 2,
@@ -237,7 +216,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                                                         t_dsnae=t_dsnae,
                                                         s_batch=s_batch,
                                                         t_batch=t_batch,
-                                                        graphLoader = graphLoader,
+                                                        
                                                         device=kwargs['device'],
                                                         optimizer=ae_optimizer,
                                                         history=dsnae_train_history)
@@ -245,12 +224,12 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
             dsnae_val_history = eval_basis_dsnae_epoch(model=s_dsnae,
                                                  data_loader=s_test_dataloader,
                                                  device=kwargs['device'],
-                                                 graphLoader = graphLoader,
+                                                 
                                                  history=dsnae_val_history
                                                  )
             dsnae_val_history = eval_basis_dsnae_epoch(model=t_dsnae,
                                                  data_loader=t_test_dataloader,
-                                                 graphLoader = graphLoader,
+                                                 
                                                  device=kwargs['device'],
                                                  history=dsnae_val_history
                                                  )
@@ -287,7 +266,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                                                              optimizer=classifier_optimizer,
                                                              history=critic_train_history,
                                                              # clip=0.1,
-                                                             graphLoader=graphLoader,
+                                                            
                                                              gp=10.0)
                 print(step)
                 if (step + 1) % 2 == 0:
@@ -299,7 +278,7 @@ def train_code_adv(s_dataloaders, t_dataloaders, ccle_only, drug_dim, cosine_fla
                                                                device=kwargs['device'],
                                                                optimizer=t_ae_optimizer,
                                                                alpha=1.0,
-                                                               graphLoader = graphLoader,
+                                                               
                                                                history=gen_train_history)
 
         torch.save(s_dsnae.state_dict(), os.path.join(kwargs['model_save_folder'], 'a_s_dsnae.pt'))
