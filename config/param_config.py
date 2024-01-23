@@ -11,11 +11,11 @@ subset_selection_flag = True
 
 seed = 2020
 # seed = 42
-folder_name = "logs/exp_subset_best_seeded_coverage_tune_1"
+folder_name = "logs/explain"
 assert(not graphLoader)
 device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 # eff_drug_list = ['fu', 'tem', 'gem', 'cis', 'sor']
 # eff_drug_list = [ 'sor', 'gem', 'fu', 'cis','tem' ]
-eff_drug_list = ['cis']
+eff_drug_list = ['gem']
 test_data_index = results_data["TCGA"]
 basis_drug_list = ['fu', 'tem', 'gem', 'cis', 'sor','sun', 'dox', 'tam', 'pac', 'car', 'Cetuximab', 'Methotrexate', 'Topotecan', 'Erlotinib', 'Irinotecan', 'Bicalutamide', 'Temsirolimus', 'Oxaliplatin', 'Docetaxel', 'Etoposide']

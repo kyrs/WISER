@@ -16,7 +16,7 @@ from src import basis_dataloader
 from src.explainability_analysis import analyze_features
 from src import fine_tuning
 from copy import deepcopy
-from src.graph_cut_subset import select_data
+from src.cut_stats_subset import select_data
 
 def generate_encoded_features(encoder, dataloader, normalize_flag=False):
     """
@@ -211,7 +211,7 @@ def main(args, update_params_dict):
                     continue
                 else:
                     ################## running again with new merged set##################
-                    explain_stats = analyze_features(index_to_select = index_to_select, pseudo_labels=associated_label, fet_df=unlabeled_tcga_df)
+                    explain_stats = analyze_features(index_to_select = index_to_select, pseudo_labels=associated_label, fet_df=unlabeled_tcga_df, drugProcessed=drug)
                     fold_count=0
                     fet_tcga_train_select = torch.index_select(torch.from_numpy(unlabeled_tcga_df.values.astype('float32')),0, index_to_select)
                     labeled_ccle_merge_tcga_dataloader_generator = get_labeled_dataloader_generator(
@@ -343,7 +343,7 @@ if __name__ == '__main__':
                                 # {"pretrain_num_epochs":100, "train_num_epochs":1000, "dop":0.1, "inv_temp":100},
                                 # {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 }, 
                             #     GEM-best hyperparameter
-                                # {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
+                                {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
                                 # {"pretrain_num_epochs":100, "train_num_epochs":2500, "dop":0.0, "inv_temp":0.001 }
 
                             #     TEM-best hyperparameter
@@ -351,7 +351,7 @@ if __name__ == '__main__':
                             #     SOR-best hyperparameter
                                 # {"pretrain_num_epochs":500, "train_num_epochs":2000, "dop":0.1, "inv_temp":2},
                             #     cis-best hyperparameter
-                                {"pretrain_num_epochs":50, "train_num_epochs":2500, "dop":0.1, "inv_temp":2.5}
+                                # {"pretrain_num_epochs":50, "train_num_epochs":2500, "dop":0.1, "inv_temp":2.5}
                                
                                 ]
     # CHANGE FOLDER_NAME

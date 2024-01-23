@@ -4,7 +4,7 @@ from torch.nn import functional as F
 from src.base_ae import BaseAE
 from src.mlp import MLP, geo_MLP
 from src.types_ import *
-from typing import List
+from typing import List                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 from torch_geometric.utils import unbatch
 class DSNBasisAE(BaseAE):
     def __init__(self, shared_encoder, decoder, basis_vec,  num_geo_layer, input_dim: int, latent_dim: int, testing_drug_len : int, inv_temp : int = 1, pseudo_conf_threshold = 0.9, alpha: float = 1.0, beta : float = 1.0, gamma : float = 1.0, eta : float = 1.0,
@@ -220,7 +220,7 @@ class DSNBasisAE(BaseAE):
 
         ortho_loss = torch.mean((s_l2.t().mm(p_l2)).pow(2))
 
-        ## NOTE : Check mean v.s cosine
+        
         
         
             
