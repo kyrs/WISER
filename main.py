@@ -335,7 +335,7 @@ if __name__ == '__main__':
     update_params_dict_list = [
                             #     Fu best hyperparameter
                                 # {"pretrain_num_epochs":100, "train_num_epochs":1000, "dop":0.1, "inv_temp":100},
-                                {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 }, 
+                                # {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 }, 
                             #     GEM-best hyperparameter
                                 # {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
                                 # {"pretrain_num_epochs":100, "train_num_epochs":2500, "dop":0.0, "inv_temp":0.001 }
@@ -345,7 +345,7 @@ if __name__ == '__main__':
                             #     SOR-best hyperparameter
                                 # {"pretrain_num_epochs":500, "train_num_epochs":2000, "dop":0.1, "inv_temp":2},
                             #     cis-best hyperparameter
-                                # {"pretrain_num_epochs":50, "train_num_epochs":2500, "dop":0.1, "inv_temp":2.5}
+                                {"pretrain_num_epochs":50, "train_num_epochs":2500, "dop":0.1, "inv_temp":2.5}
                                
                                 ]
     # CHANGE FOLDER_NAME
