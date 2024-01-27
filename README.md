@@ -1,3 +1,6 @@
-# WISER : Weakly-labeled Instance selection for SupErvised Representation learning (WISER)
+# WISER
 
+## Advancing cancer drug response prediction through weak supervision and supervised representation learning
 
+## Architecture
+![architecture](./images/arch.png?raw=true
