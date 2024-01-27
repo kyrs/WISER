@@ -13,8 +13,8 @@ Our work introduces a novel representation learning approach that incorporates d
 1. Install anaconda:
 Instructions here: https://www.anaconda.com/download/
 2. pip install -r requirements.txt
-3. Download benchmark datasets available at Zenodo [http://doi.org/10.5281/zenodo.4776448]   (version 2.0)
-4. Replace the downloaded path in the config/data_config.py
+3. Download benchmark datasets (CODE-AE) available at Zenodo [http://doi.org/10.5281/zenodo.4776448]   (version 2.0)
+4. Changed the `root dir` in the `config/data_config.py` to the address where benchmark dataset is saved.
 5. Run main.py
 
 ## Configuration
