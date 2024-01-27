@@ -18,5 +18,6 @@ Instructions here: https://www.anaconda.com/download/
 5. Run main.py
 
 ## Configuration
-1. Apart from standard argument based configuration used in previous work. additional configuration parameters has been provided in config/
-2. Best hyperparameters for all the drugs including AUROC and AUPRC score hsa been provided in config/best_hypm.json with respect to the default seed in config/param_config.json
+1. In addition to the standard argument-based configuration used in previous work, additional configuration parameters have been provided in `config/`.
+
+2. The best hyperparameters for all drugs, including AUROC and AUPRC scores, have been provided in `config/best_hypm.json` with respect to the default seed used in `config/param_config.py`.
