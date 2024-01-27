@@ -29,7 +29,6 @@ class DSNAE(BaseAE):
         modules.append(
             nn.Sequential(
                 nn.Linear(input_dim, hidden_dims[0], bias=True),
-                # nn.BatchNorm1d(hidden_dims[0]),
                 nn.ReLU(),
                 nn.Dropout(self.dop)
             )
@@ -39,50 +38,14 @@ class DSNAE(BaseAE):
             modules.append(
                 nn.Sequential(
                     nn.Linear(hidden_dims[i], hidden_dims[i + 1], bias=True),
-                    # nn.Dropout(0.1),
-                    # nn.BatchNorm1d(hidden_dims[i + 1]),
                     nn.ReLU(),
                     nn.Dropout(self.dop)
                 )
             )
         modules.append(nn.Dropout(self.dop))
         modules.append(nn.Linear(hidden_dims[-1], latent_dim, bias=True))
-        # modules.append(nn.LayerNorm(latent_dim, eps=1e-12, elementwise_affine=False))
-
+        
         self.private_encoder = nn.Sequential(*modules)
-
-        # build decoder
-        # modules = []
-        #
-        # modules.append(
-        #     nn.Sequential(
-        #         nn.Linear(2 * latent_dim, hidden_dims[-1], bias=True),
-        #         # nn.Dropout(0.1),
-        #         nn.BatchNorm1d(hidden_dims[-1]),
-        #         nn.ReLU()
-        #     )
-        # )
-        #
-        # hidden_dims.reverse()
-        #
-        # for i in range(len(hidden_dims) - 1):
-        #     modules.append(
-        #         nn.Sequential(
-        #             nn.Linear(hidden_dims[i], hidden_dims[i + 1], bias=True),
-        #             nn.BatchNorm1d(hidden_dims[i + 1]),
-        #             # nn.Dropout(0.1),
-        #             nn.ReLU()
-        #         )
-        #     )
-        # self.decoder = nn.Sequential(*modules)
-
-        # self.final_layer = nn.Sequential(
-        #     nn.Linear(hidden_dims[-1], hidden_dims[-1], bias=True),
-        #     nn.BatchNorm1d(hidden_dims[-1]),
-        #     nn.ReLU(),
-        #     nn.Dropout(0.1),
-        #     nn.Linear(hidden_dims[-1], input_dim)
-        # )
 
     def p_encode(self, input: Tensor) -> Tensor:
         if self.noise_flag and self.training:
@@ -112,10 +75,7 @@ class DSNAE(BaseAE):
         return torch.cat((p_latent_code, s_latent_code), dim=1)
 
     def decode(self, z: Tensor) -> Tensor:
-        # embed = self.decoder(z)
-        # outputs = self.final_layer(embed)
         outputs = self.decoder(z)
-
         return outputs
 
     def forward(self, input: Tensor, **kwargs) -> List[Tensor]:
@@ -139,11 +99,6 @@ class DSNAE(BaseAE):
         p_l2 = p_z.div(p_l2_norm.expand_as(p_z) + 1e-6)
 
         ortho_loss = torch.mean((s_l2.t().mm(p_l2)).pow(2))
-        # ortho_loss = torch.square(torch.norm(torch.matmul(s_z.t(), p_z), p='fro'))
-        # ortho_loss = torch.mean(torch.square(torch.diagonal(torch.matmul(p_z, s_z.t()))))
-        # if recons_loss > ortho_loss:
-        #     loss = recons_loss + self.alpha * 0.1 * ortho_loss
-        # else:
         loss = recons_loss + self.alpha * ortho_loss
         return {'loss': loss, 'recons_loss': recons_loss, 'ortho_loss': ortho_loss}
 

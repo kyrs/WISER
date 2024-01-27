@@ -10,7 +10,7 @@ class RevGrad(Function):
         return output
 
     @staticmethod
-    def backward(ctx, grad_output):  # pragma: no cover
+    def backward(ctx, grad_output):  
         grad_input = None
         _, alpha_ = ctx.saved_tensors
         if ctx.needs_input_grad[0]:

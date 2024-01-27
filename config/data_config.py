@@ -1,11 +1,11 @@
 import os
-"""
-configuration file includes all related datasets 
-"""
-sig_gene_json = "./data/sigGeneWithAliasInUq1000Details.json"
-# root_data_folder = '../data/'
-root_data_folder = "/home/ece/hdd/NUS-IISC/CODE-AE/data/" 
 
+sig_gene_json = "./data/sigGeneWithAliasInUq1000Details.json"
+
+root_data_folder = "" 
+if (root_data_folder == "") : 
+    print ("please set root data folder </config/data_config.py> before proceeding.")
+    exit()
 
 ## resist feature file 
 

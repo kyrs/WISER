@@ -2,9 +2,6 @@ import torch.nn as nn
 import torch
 from src.types_ import *
 
-
-
-
 class EncoderDecoder_basis(nn.Module):
 
     def __init__(self, encoder, decoder, basis_vec,  testing_drug_len, inv_temp = 1, normalize_flag=False, cosine_flag=True ):

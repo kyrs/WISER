@@ -15,7 +15,6 @@ def classification_train_step(model, batch, loss_fn, device, optimizer, history,
     x = batch[0].to(device)
     y = batch[1].to(device)
        
-    ## NOTE : check batch size for all the batch process 
     loss = loss_fn(model(x)[0], y.double().unsqueeze(1))
 
     optimizer.zero_grad()
@@ -107,20 +106,7 @@ def fine_tune_encoder_basis(encoder, basis_vec,  train_dataloader, val_dataloade
                 reset_count += 1
             except IndexError:
                 break
-        # if stop_flag and not break_flag:
-        #     print(f'Unfreezing {epoch}')
-        #     target_classifier.load_state_dict(
-        #         torch.load(os.path.join(task_save_folder, f'target_classifier_{seed}.pt')))
-        #
-        #     target_classification_params.append(target_classifier.encoder.shared_encoder.parameters())
-        #     target_classification_params.append(target_classifier.encoder.private_encoder.parameters())
-        #
-        #     lr = lr * kwargs['decay_coefficient']
-        #     target_classification_optimizer = torch.optim.AdamW(chain(*target_classification_params), lr=lr)
-        #     break_flag = True
-        #     stop_flag = False
-        # if stop_flag and break_flag:
-        #     break
+
 
     target_classifier.load_state_dict(
         torch.load(os.path.join(task_save_folder, f'target_classifier_{seed}.pt')))

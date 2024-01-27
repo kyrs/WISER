@@ -178,7 +178,6 @@ def get_tcga_response_df():
     first_response_df = pancancer_response_df.merge(pancancer_response_df.groupby('bcr_patient_barcode')[
                                                         'days_to_new_tumor_event_after_initial_treatment'].min().reset_index())
 
-    # pprint(cols)
     return first_response_df, pancancer_response_df
 
 

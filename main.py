@@ -296,58 +296,29 @@ if __name__ == '__main__':
     parser.set_defaults(hpt_flag=False)
     args = parser.parse_args()
     
-    # params_grid = {
-    # "pretrain_num_epochs": [50, 100, 300, 500, 800, 1000],
-    # "train_num_epochs": [0, 1000, 1500, 2000, 2500, 3000],
-    # "dop": [0.0, 0.1],
-    # "inv_temp": [1, 1.5, 2, 5, 10, 50, 100, 1000]
-    # }
 
-    # params_grid = {
-    # "pretrain_num_epochs": [50, 100, 300],
-    # "train_num_epochs": [1000, 2000, 2500],
-    # "dop": [0.1, 0.0],
-    # "inv_temp": [0.01,0.1, 10, 2, 2.5, 1]
-    # }
 
-   
-    # params_grid = {
-    # "pretrain_num_epochs": [100,300,50],
-    # "train_num_epochs": [1000,2500],
-    # "train_num_epochs": [0.1,0.0],
-    # "inv_temp": [0.25, 0.5, 2, 5, 100, 0.001]
-    # }
+    params_grid = {
+    "pretrain_num_epochs": [50,100,300],
+    "train_num_epochs": [1000,2500, 3000],
+    "train_num_epochs": [0.1,0.0],
+    "inv_temp": [0.01,0.1, 10, 2, 2.5, 1, 100]
+    }
     
     if args.method not in ['code_adv', 'adsn', 'adae', 'dsnw']:
         params_grid.pop('pretrain_num_epochs')
 
-    # # ************* FOR DOING RANDOMIZED GRIDSEARCH WITH DIFFERENT TEMPERATURE *******************
+    # # ************* FOR DOING RANDOMIZED GRIDSEARCH  ************* *******************
     # keys, values = zip(*params_grid.items())
     # update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
     # update_params_dict_list = random.sample(update_params_dict_list, 90) # to be removed later on (defaultl 80)
     # # # ***********************************************************************************
 
-    # # # ************* FOR DOING GRIDSEARCH KEEPING TEMPERATURE CONSTANT!*******************
-    # keys, values = zip(*params_grid.items())
-    # update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
-    # # ***********************************************************************************
+    # # ************* FOR DOING GRIDSEARCH ********************************
+    keys, values = zip(*params_grid.items())
+    update_params_dict_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    # ***********************************************************************************
 
-    update_params_dict_list = [
-                            #     Fu best hyperparameter
-                                # {"pretrain_num_epochs":100, "train_num_epochs":1000, "dop":0.1, "inv_temp":100},
-                                # {"pretrain_num_epochs":300, "train_num_epochs":1000, "dop":0.0, "inv_temp":100 }, 
-                            #     GEM-best hyperparameter
-                                # {"pretrain_num_epochs":300, "train_num_epochs":2000, "dop":0.1, "inv_temp":0.1},
-                                # {"pretrain_num_epochs":100, "train_num_epochs":2500, "dop":0.0, "inv_temp":0.001 }
-
-                            #     TEM-best hyperparameter
-                                # {"pretrain_num_epochs":300, "train_num_epochs":3000, "dop":0.0, "inv_temp":100},
-                            #     SOR-best hyperparameter
-                                # {"pretrain_num_epochs":500, "train_num_epochs":2000, "dop":0.1, "inv_temp":2},
-                            #     cis-best hyperparameter
-                                {"pretrain_num_epochs":50, "train_num_epochs":2500, "dop":0.1, "inv_temp":2.5}
-                               
-                                ]
     # CHANGE FOLDER_NAME
     folder_name = 'model_save'
 

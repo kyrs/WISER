@@ -17,7 +17,6 @@ warnings.filterwarnings("ignore")
  
 from torch_geometric.data import HeteroData
 from torch_geometric.loader import DataLoader as geo_dataLoader
-# argument of this function would be a string (drug name) and the GDSC files to prevent rep reading...
 import json 
 
 def load_json(fileName):
@@ -67,7 +66,7 @@ def prepare_CCLE_files():
 
 def fetchCCLE_datafordrug(CCLE_Files, drug, diagnosis = False, threshold = None):    
 
-    #NOTE : change the value of threshold 
+    
     threshold = 0.0
     drug = drug.lower()
     
@@ -107,8 +106,6 @@ def fetchCCLE_datafordrug(CCLE_Files, drug, diagnosis = False, threshold = None)
 #     so we have the gene expressions and all the labels for these samples in CCLE
     ccle_labeled_samples = gex_features_df.index.intersection(ccle_target_df.index)
 
-#     thresholding on Z scores
-    # NOTE : None v/s Zer0 : IMP
     if threshold == None:
         threshold = np.median(ccle_target_df['Z_SCORE'].loc[ccle_labeled_samples].values)
 
@@ -152,7 +149,7 @@ def build_basis_CCLE(drug_list, CCLE_Files, seed):
         assert(len(labeled_data) > 0 ) 
         drug_df_list.append(labeled_data)
 
-    # NOTE : check with original data loader (class label )
+    
     assert(len(drug_df_list) > 0)
 
     combined_df = pd.concat(drug_df_list)
@@ -335,7 +332,6 @@ def TCGA_DataLoaders(unlabeled_TCGA_data, labeled_TCGA_data, batch_size, seed):
         labeled_TCGA_data.values,
         test_size=0.1,
         random_state = seed
-#     NOTE : not used stratification here as well
     )
     train_tcga_labels = np.squeeze(train_tcga_labels)
     tensor_train_tcga_labels = torch.stack([torch.tensor(lst) for lst in train_tcga_labels])

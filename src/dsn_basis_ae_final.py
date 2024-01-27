@@ -35,30 +35,7 @@ class DSNBasisAE(BaseAE):
         self.shared_encoder = shared_encoder
         self.decoder = decoder
         self.basis_vec = basis_vec
-        
-        # print('train_fn, dsnae : ', self.basis_vec.weight)
-        # modules = []
 
-    
-        # modules.append(
-        #     nn.Sequential(
-        #         nn.Linear(input_dim, hidden_dims[0], bias=True),
-        #         nn.ReLU(),
-        #         nn.Dropout(self.dop)
-        #     )
-        # )
-
-        # for i in range(len(hidden_dims) - 1):
-        #     modules.append(
-        #         nn.Sequential(
-        #             nn.Linear(hidden_dims[i], hidden_dims[i + 1], bias=True),
-
-        #             nn.ReLU(),
-        #             nn.Dropout(self.dop)
-        #         )
-        #     )
-        # modules.append(nn.Dropout(self.dop))
-        # modules.append(nn.Linear(hidden_dims[-1], latent_dim, bias=True))
     
         self.private_encoder =  MLP(input_dim=input_dim,
                                     output_dim=latent_dim,
@@ -190,12 +167,11 @@ class DSNBasisAE(BaseAE):
         loss_commit = torch.mean((s_latent_code - final_code.detach())**2)
         loss_commit_reverse = torch.mean((s_latent_code.detach() - final_code)**2)
 
-        # print(f'recons_loss : {recons_loss} ortho_loss : {ortho_loss} commit : {loss_commit} loss_commit_reverse : {loss_commit_reverse} loss_basis_label : {basis_label_loss}')
         if(torch.isnan(recons_loss)):
             print(f'basis_vec {self.basis_vec.weight}')
             assert(False)
         
-        # print(f'alpha : {self.alpha} beta : {self.beta} gamma : {self.gamma} eta : {self.eta}')
+        
         if(self.cns_basis_label_loss):
             loss = recons_loss + self.alpha * ortho_loss + self.beta * loss_commit + self.gamma * loss_commit_reverse + self.eta * basis_label_loss
             print(f'recons_loss : {recons_loss} ortho_loss : {ortho_loss} commit : {loss_commit} loss_commit_reverse : {loss_commit_reverse} loss_basis_label : {basis_label_loss} cns_basis : {self.cns_basis_label_loss}')

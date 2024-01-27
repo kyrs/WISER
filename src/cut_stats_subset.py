@@ -3,7 +3,6 @@ import torch
 from scipy.stats import mode
 
 def LabelPred(prob, class_0_th, class_1_th):
-    # print(prob)
     if prob <  class_0_th:
         return 0 
     if prob >  class_1_th:
@@ -12,7 +11,6 @@ def LabelPred(prob, class_0_th, class_1_th):
         return -1
 def MajorityVote(row):
     ## return the max cnt of label ignoring -1
-    ## else return -1
     row = np.array(row)
     if sum(row==-1) == len(row):
         return -1
@@ -61,7 +59,7 @@ def select_data(index_dict_list, class_0_th = 0.3, class_1_th = 0.7, budget=0.7,
     else:
         return [], []
 def get_cutstat_inds(features, labels, coverage=0.5, K=20, device='cpu'):
-        # move to CPU for memory issues on large dset
+    # move to CPU for memory issues on large dset
     print("coverage : ", coverage)
     print("neighbor : ", K)    
     pairwise_dists = torch.cdist(features, features, p=2).to('cpu')
