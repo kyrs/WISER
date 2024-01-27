@@ -301,7 +301,7 @@ if __name__ == '__main__':
     params_grid = {
     "pretrain_num_epochs": [50,100,300],
     "train_num_epochs": [1000,2500, 3000],
-    "train_num_epochs": [0.1,0.0],
+    "dop": [0.1, 0.0],
     "inv_temp": [0.01,0.1, 10, 2, 2.5, 1, 100]
     }
     
