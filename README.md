@@ -1,6 +1,6 @@
 # WISER
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python3-1f425f.svg?color=purple)](https://www.python.org/)
-## Advancing cancer drug response prediction through weak supervision and supervised representation learning
+## Cancer drug response prediction through Weak supervISion and supErvised Representation learning
 ## Acknowledgement
 Current code base is based on 
 1. https://github.com/XieResearchGroup/CODE-AE
