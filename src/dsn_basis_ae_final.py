@@ -139,7 +139,7 @@ class DSNBasisAE(BaseAE):
             pos_cosine_dis = (target==1) * (1-torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T))
             neg_cosine_dis = (target==0) * (1-torch.matmul(norm_s_latent_code.detach(), norm_basis_vec.T))
             posCos = pos_cosine_dis.sum() / ((target==1).sum())
-            negCos = neg_cosine_dis.mean() /  ((target==0).sum())
+            negCos = neg_cosine_dis.sum() /  ((target==0).sum())
             # print(posCos, negCos)
             basis_label_loss = torch.max( posCos-negCos+0.2, torch.tensor(0))
 
